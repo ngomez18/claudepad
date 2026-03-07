@@ -74,7 +74,7 @@ func (c *Client) registerWatches(emit func(string)) error {
 		return err
 	}
 
-	if err := c.watcher.Watch(
+	if err := c.watcher.WatchDir(
 		filepath.Join(globalDir, "plans"),
 		func() { emit("plans:updated") },
 	); err != nil {

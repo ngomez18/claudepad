@@ -1,6 +1,9 @@
 import { useState } from 'react'
-import { FileText, RotateCcw } from 'lucide-react'
+import { FileText, RotateCcw, Eye, Code2 } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels'
 import type { plans } from '../../wailsjs/go/models'
+import type { Components } from 'react-markdown'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -47,10 +50,10 @@ function PlanRow({
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left px-4 py-3.5 border-b border-white/[0.04] transition-colors group relative
+      className={`w-full text-left px-4 py-3.5 border-b border-white/4 transition-colors group relative
         ${selected
-          ? 'bg-blue-500/10 border-l-2 border-l-blue-500/60 pl-[14px]'
-          : 'hover:bg-white/[0.03] border-l-2 border-l-transparent'
+          ? 'bg-blue-500/10 border-l-2 border-l-blue-500/60 pl-3.5'
+          : 'hover:bg-white/3 border-l-2 border-l-transparent'
         }`}
     >
       {/* Name */}
@@ -63,7 +66,7 @@ function PlanRow({
       {/* Todo progress */}
       {plan.todoTotal > 0 && (
         <div className="flex items-center gap-2 mb-1.5">
-          <div className="flex-1 h-[3px] rounded-full bg-white/8 overflow-hidden">
+          <div className="flex-1 h-0.75 rounded-full bg-white/8 overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${allDone ? 'bg-emerald-500/70' : 'bg-blue-500/50'}`}
               style={{ width: `${pct}%` }}
@@ -88,28 +91,112 @@ function PlanRow({
   )
 }
 
+// ── Markdown components ───────────────────────────────────────────────────────
+
+const markdownComponents: Components = {
+  h1: ({ children }) => <h1 className="text-lg font-semibold text-slate-100 mb-3 mt-6 first:mt-0">{children}</h1>,
+  h2: ({ children }) => <h2 className="text-[15px] font-semibold text-slate-100 mb-2 mt-5 first:mt-0">{children}</h2>,
+  h3: ({ children }) => <h3 className="text-[13px] font-semibold text-slate-200 mb-2 mt-4 first:mt-0">{children}</h3>,
+  p:  ({ children }) => <p className="text-[13px] text-slate-300 leading-relaxed mb-3">{children}</p>,
+  code: ({ children, className }) => {
+    const isBlock = !!className
+    if (isBlock) return <code className="text-slate-300 text-xs font-mono">{children}</code>
+    return <code className="bg-white/8 text-blue-300 px-1.5 py-0.5 rounded text-[11px] font-mono">{children}</code>
+  },
+  pre: ({ children }) => <pre className="bg-white/5 rounded-lg p-4 mb-3 overflow-x-auto">{children}</pre>,
+  ul: ({ children }) => <ul className="text-slate-300 pl-5 mb-3 space-y-1 list-disc">{children}</ul>,
+  ol: ({ children }) => <ol className="text-slate-300 pl-5 mb-3 space-y-1 list-decimal">{children}</ol>,
+  li: ({ children }) => {
+    // Detect task list items by inspecting children for checkbox input
+    const childArr = Array.isArray(children) ? children : [children]
+    const firstChild = childArr[0]
+    if (
+      firstChild &&
+      typeof firstChild === 'object' &&
+      'type' in firstChild &&
+      firstChild.type === 'input'
+    ) {
+      const checked = (firstChild as React.ReactElement<{ checked?: boolean }>).props.checked
+      return (
+        <li className="text-[13px] leading-relaxed list-none flex items-start gap-2 -ml-1">
+          <span className={`mt-0.75 size-3.5 shrink-0 rounded-[3px] border flex items-center justify-center ${
+            checked ? 'bg-blue-500/30 border-blue-500/50' : 'border-white/20'
+          }`}>
+            {checked && <span className="block size-1.25 rounded-[1px] bg-blue-400" />}
+          </span>
+          <span>{childArr.slice(1)}</span>
+        </li>
+      )
+    }
+    return <li className="text-[13px] leading-relaxed">{children}</li>
+  },
+  blockquote: ({ children }) => <blockquote className="border-l-2 border-white/15 pl-4 text-slate-500 italic mb-3">{children}</blockquote>,
+  a: ({ children, href }) => <a href={href} className="text-blue-400 hover:text-blue-300 underline">{children}</a>,
+  hr: () => <hr className="border-white/10 my-4" />,
+  strong: ({ children }) => <strong className="text-slate-100 font-semibold">{children}</strong>,
+  em: ({ children }) => <em className="italic">{children}</em>,
+}
+
 // ── Detail panel ──────────────────────────────────────────────────────────────
 
 function PlanDetail({ plan }: { plan: plans.Plan }) {
+  const [viewMode, setViewMode] = useState<'rendered' | 'raw'>('rendered')
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="px-8 py-5 border-b border-white/5 shrink-0">
-        <h2 className="text-[15px] font-semibold text-slate-100 leading-snug">
-          {formatName(plan.filename)}
-        </h2>
-        {plan.todoTotal > 0 && (
-          <p className="text-[11px] text-slate-600 mt-1">
-            {plan.todoDone} of {plan.todoTotal} tasks complete
-          </p>
-        )}
+      <div className="px-8 py-5 border-b border-white/5 shrink-0 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-[15px] font-semibold text-slate-100 leading-snug">
+            {formatName(plan.filename)}
+          </h2>
+          {plan.todoTotal > 0 && (
+            <p className="text-[11px] text-slate-600 mt-1">
+              {plan.todoDone} of {plan.todoTotal} tasks complete
+            </p>
+          )}
+        </div>
+
+        {/* View toggle */}
+        <div className="flex items-center gap-0.5 bg-white/4 rounded-md p-0.5 shrink-0">
+          <button
+            onClick={() => setViewMode('rendered')}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] transition-colors ${
+              viewMode === 'rendered'
+                ? 'bg-white/10 text-slate-200'
+                : 'text-slate-600 hover:text-slate-400'
+            }`}
+          >
+            <Eye className="size-3" />
+            Rendered
+          </button>
+          <button
+            onClick={() => setViewMode('raw')}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] transition-colors ${
+              viewMode === 'raw'
+                ? 'bg-white/10 text-slate-200'
+                : 'text-slate-600 hover:text-slate-400'
+            }`}
+          >
+            <Code2 className="size-3" />
+            Raw
+          </button>
+        </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-8 py-6">
-        <pre className="text-[13px] leading-relaxed text-slate-300 font-mono whitespace-pre-wrap break-words">
-          {plan.content}
-        </pre>
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-8 py-6">
+          {viewMode === 'rendered' ? (
+            <ReactMarkdown components={markdownComponents}>
+              {plan.content}
+            </ReactMarkdown>
+          ) : (
+            <pre className="text-[13px] leading-relaxed text-slate-300 font-mono whitespace-pre-wrap wrap-break-word">
+              {plan.content}
+            </pre>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -156,9 +243,9 @@ export default function PlansPage({
   const selected = planList?.find(p => p.path === selectedPath) ?? null
 
   return (
-    <div className="flex h-full -m-10 overflow-hidden">
+    <PanelGroup orientation="horizontal" className="h-full overflow-hidden">
       {/* List panel */}
-      <div className="w-[300px] shrink-0 flex flex-col border-r border-white/5 overflow-hidden">
+      <Panel defaultSize="280px" minSize="180px" maxSize="60%" className="flex flex-col border-r border-white/5 overflow-hidden">
         <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
           <span className="text-[11px] font-semibold tracking-widest uppercase text-slate-500">
             Plans
@@ -186,12 +273,16 @@ export default function PlansPage({
             ))
           )}
         </div>
-      </div>
+      </Panel>
+
+      <PanelResizeHandle className="w-1.25 group flex items-stretch justify-center cursor-col-resize">
+        <div className="w-px bg-white/5 group-hover:bg-blue-500/40 transition-colors" />
+      </PanelResizeHandle>
 
       {/* Detail panel */}
-      <div className="flex-1 overflow-hidden">
+      <Panel className="overflow-hidden">
         {selected ? <PlanDetail plan={selected} /> : <NoSelection />}
-      </div>
-    </div>
+      </Panel>
+    </PanelGroup>
   )
 }

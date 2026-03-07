@@ -58,4 +58,5 @@ SQLite at `~/.claudepad/claudepad.db` stores only enrichment metadata (friendly 
 - **Browser mode** is launched with `claudepad --browser --port 5173`; requires the full REST layer (not just Wails IPC).
 
 ### Instructions
+- Refer to the files available in `docs/` to understand the project and it's current state
 - When in need of more details regarding the internal workings of Claude Code, please refer to `docs/claude_code_data.md`. If data is not available there, feel free to explore local `.claude` folders or look up Claude Code documentation online. Avoid speculation.

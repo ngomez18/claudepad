@@ -32,8 +32,7 @@ func NewWatcher() (*Watcher, error) {
 	return w, nil
 }
 
-// Watch registers onChange to be called when path is modified.
-// Multiple files in the same directory are handled with one fsnotify watch.
+// Watch registers onChange to be called when the file at path is modified.
 func (w *Watcher) Watch(path string, onChange func()) error {
 	abs, err := filepath.Abs(path)
 	if err != nil {
@@ -43,6 +42,19 @@ func (w *Watcher) Watch(path string, onChange func()) error {
 	w.handlers[abs] = onChange
 	w.mu.Unlock()
 	return w.fsw.Add(filepath.Dir(abs))
+}
+
+// WatchDir registers onChange to be called when any file inside dir changes.
+func (w *Watcher) WatchDir(dir string, onChange func()) error {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return err
+	}
+	// Store with a trailing slash so it can't collide with a file path.
+	w.mu.Lock()
+	w.handlers[abs+string(filepath.Separator)] = onChange
+	w.mu.Unlock()
+	return w.fsw.Add(abs)
 }
 
 func (w *Watcher) Close() {
@@ -72,6 +84,11 @@ func (w *Watcher) loop() {
 			abs, _ := filepath.Abs(event.Name)
 			w.mu.Lock()
 			handler, ok := w.handlers[abs]
+			if !ok {
+				// Check if a directory handler covers this file.
+				dirKey := filepath.Dir(abs) + string(filepath.Separator)
+				handler, ok = w.handlers[dirKey]
+			}
 			w.mu.Unlock()
 			if !ok {
 				continue

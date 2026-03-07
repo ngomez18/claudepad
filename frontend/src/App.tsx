@@ -39,7 +39,7 @@ function Sidebar({ active, onNavigate, project, onProjectChange }: {
   onProjectChange: (p: string) => void
 }) {
   return (
-    <aside className="flex flex-col w-[220px] shrink-0 h-screen bg-[#161b27] border-r border-white/5 py-5">
+    <aside className="flex flex-col w-55 shrink-0 h-screen bg-[#161b27] border-r border-white/5 py-5">
       <div className="px-5 pb-4 text-[15px] font-semibold tracking-tight text-slate-100">
         Claudepad
       </div>
@@ -112,14 +112,18 @@ function PageContent({ section, project }: { section: string; project: string })
   const { data: plansData, refresh: refreshPlans } = usePlans()
   const { data: usageData, error: usageError } = useUsageStats()
 
+  const isEdgeToEdge = section === 'plans'
+
   return (
-    <main className="flex-1 overflow-y-auto p-10 bg-[#0f1117]">
-      <div className="flex items-baseline gap-3 mb-8">
-        <h1 className="text-[22px] font-bold text-slate-100 m-0">{item?.label}</h1>
-        <span className="text-xs text-slate-500 bg-white/5 px-2 py-0.5 rounded">
-          {project === 'global' ? 'Global' : project}
-        </span>
-      </div>
+    <main className={`flex-1 flex flex-col overflow-hidden bg-[#0f1117] ${isEdgeToEdge ? '' : 'p-10 overflow-y-auto'}`}>
+      {!isEdgeToEdge && (
+        <div className="flex items-baseline gap-3 mb-8">
+          <h1 className="text-[22px] font-bold text-slate-100 m-0">{item?.label}</h1>
+          <span className="text-xs text-slate-500 bg-white/5 px-2 py-0.5 rounded">
+            {project === 'global' ? 'Global' : project}
+          </span>
+        </div>
+      )}
 
       {section === 'plans' ? (
         <PlansPage plans={plansData} onRefresh={refreshPlans} />
