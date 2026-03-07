@@ -34,3 +34,8 @@ func (a *App) shutdown(_ context.Context) {
 func (a *App) GetUsageStats() (*claude.StatsCache, error) {
 	return a.claude.GetUsageStats()
 }
+
+// GetPlans returns all plan files from ~/.claude/plans/.
+func (a *App) GetPlans() ([]claude.Plan, error) {
+	return a.claude.GetPlans()
+}

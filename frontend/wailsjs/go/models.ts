@@ -1,3 +1,30 @@
+export namespace plans {
+	
+	export class Plan {
+	    path: string;
+	    filename: string;
+	    content: string;
+	    todoTotal: number;
+	    todoDone: number;
+	    modifiedAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Plan(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.filename = source["filename"];
+	        this.content = source["content"];
+	        this.todoTotal = source["todoTotal"];
+	        this.todoDone = source["todoDone"];
+	        this.modifiedAt = source["modifiedAt"];
+	    }
+	}
+
+}
+
 export namespace usage {
 	
 	export class DailyActivity {

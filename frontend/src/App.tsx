@@ -10,10 +10,11 @@ import {
   ChevronDown,
   type LucideIcon,
 } from 'lucide-react'
+import PlansPage from './pages/Plans'
 import UsagePage from './pages/Usage'
-import { GetUsageStats } from '../wailsjs/go/main/App'
+import { GetPlans, GetUsageStats } from '../wailsjs/go/main/App'
 import { EventsOn } from '../wailsjs/runtime/runtime'
-import type { usage } from '../wailsjs/go/models'
+import type { plans, usage } from '../wailsjs/go/models'
 
 interface NavItem {
   id: string
@@ -31,14 +32,12 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'usage',    label: 'Usage',    Icon: BarChart2 },
 ]
 
-interface SidebarProps {
+function Sidebar({ active, onNavigate, project, onProjectChange }: {
   active: string
   onNavigate: (id: string) => void
   project: string
   onProjectChange: (p: string) => void
-}
-
-function Sidebar({ active, onNavigate, project, onProjectChange }: SidebarProps) {
+}) {
   return (
     <aside className="flex flex-col w-[220px] shrink-0 h-screen bg-[#161b27] border-r border-white/5 py-5">
       <div className="px-5 pb-4 text-[15px] font-semibold tracking-tight text-slate-100">
@@ -80,6 +79,20 @@ function Sidebar({ active, onNavigate, project, onProjectChange }: SidebarProps)
   )
 }
 
+function usePlans() {
+  const [data, setData] = useState<plans.Plan[] | null>(null)
+
+  const fetch = () => GetPlans().then(setData).catch(() => setData([]))
+
+  useEffect(() => {
+    fetch()
+    const off = EventsOn('plans:updated', fetch)
+    return off
+  }, [])
+
+  return { data, refresh: fetch }
+}
+
 function useUsageStats() {
   const [data, setData] = useState<usage.StatsCache | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -94,13 +107,9 @@ function useUsageStats() {
   return { data, error }
 }
 
-interface PageContentProps {
-  section: string
-  project: string
-}
-
-function PageContent({ section, project }: PageContentProps) {
+function PageContent({ section, project }: { section: string; project: string }) {
   const item = NAV_ITEMS.find(n => n.id === section)
+  const { data: plansData, refresh: refreshPlans } = usePlans()
   const { data: usageData, error: usageError } = useUsageStats()
 
   return (
@@ -112,12 +121,12 @@ function PageContent({ section, project }: PageContentProps) {
         </span>
       </div>
 
-      {section === 'usage' ? (
-        usageError ? (
-          <p className="text-sm text-red-400/70">{usageError}</p>
-        ) : (
-          <UsagePage data={usageData} />
-        )
+      {section === 'plans' ? (
+        <PlansPage plans={plansData} onRefresh={refreshPlans} />
+      ) : section === 'usage' ? (
+        usageError
+          ? <p className="text-sm text-red-400/70">{usageError}</p>
+          : <UsagePage data={usageData} />
       ) : (
         <p className="text-sm text-slate-600">{item?.label} content goes here.</p>
       )}

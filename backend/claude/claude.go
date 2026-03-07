@@ -5,12 +5,14 @@ import (
 	"os"
 	"path/filepath"
 
+	"claudepad/backend/claude/plans"
 	"claudepad/backend/claude/usage"
 	fswatch "claudepad/backend/fs"
 )
 
 // Re-export sub-package types so app.go only needs this package.
 type StatsCache = usage.StatsCache
+type Plan = plans.Plan
 
 // Client provides access to Claude Code's local data files.
 // It owns the file watcher and all path resolution — callers never touch paths directly.
@@ -49,12 +51,27 @@ func (c *Client) registerWatches(emit func(string)) error {
 	}
 	globalDir := filepath.Join(home, ".claude")
 
-	return c.watcher.Watch(
+	if err := c.watcher.Watch(
 		filepath.Join(globalDir, "stats-cache.json"),
 		func() { emit("usage:stats-updated") },
-	)
+	); err != nil {
+		return err
+	}
+
+	if err := c.watcher.Watch(
+		filepath.Join(globalDir, "plans"),
+		func() { emit("plans:updated") },
+	); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *Client) GetUsageStats() (*StatsCache, error) {
 	return usage.ReadStatsCache()
+}
+
+func (c *Client) GetPlans() ([]Plan, error) {
+	return plans.ReadPlans()
 }
