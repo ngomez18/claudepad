@@ -7,6 +7,7 @@ import (
 
 	"claudepad/backend/claude/plans"
 	"claudepad/backend/claude/usage"
+	"claudepad/backend/db"
 	fswatch "claudepad/backend/fs"
 )
 
@@ -18,27 +19,42 @@ type Plan = plans.Plan
 // It owns the file watcher and all path resolution — callers never touch paths directly.
 type Client struct {
 	watcher *fswatch.Watcher
+	db      *db.DB
 }
 
 func New() *Client {
 	return &Client{}
 }
 
-// Start initialises the file watcher. emit is called with an event name whenever
-// a watched file changes; pass runtime.EventsEmit or equivalent.
+// Start initialises the database and file watcher. emit is called with an event
+// name whenever a watched file changes; pass runtime.EventsEmit or equivalent.
 func (c *Client) Start(_ context.Context, emit func(event string)) error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	d, err := db.Open(filepath.Join(home, ".claudepad", "claudepad.db"))
+	if err != nil {
+		return err
+	}
+	c.db = d
+
 	w, err := fswatch.NewWatcher()
 	if err != nil {
+		c.db.Close()
 		return err
 	}
 	c.watcher = w
 	return c.registerWatches(emit)
 }
 
-// Stop shuts down the file watcher.
+// Stop shuts down the file watcher and database connection.
 func (c *Client) Stop() {
 	if c.watcher != nil {
 		c.watcher.Close()
+	}
+	if c.db != nil {
+		c.db.Close()
 	}
 }
 
