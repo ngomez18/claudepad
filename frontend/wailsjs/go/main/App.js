@@ -6,6 +6,10 @@ export function AddProject(arg1) {
   return window['go']['main']['App']['AddProject'](arg1);
 }
 
+export function GetCommands(arg1) {
+  return window['go']['main']['App']['GetCommands'](arg1);
+}
+
 export function GetPlans() {
   return window['go']['main']['App']['GetPlans']();
 }
@@ -26,6 +30,10 @@ export function GetSettings(arg1) {
   return window['go']['main']['App']['GetSettings'](arg1);
 }
 
+export function GetSkills(arg1) {
+  return window['go']['main']['App']['GetSkills'](arg1);
+}
+
 export function GetUsageStats() {
   return window['go']['main']['App']['GetUsageStats']();
 }
@@ -40,6 +48,10 @@ export function RemoveProject(arg1) {
 
 export function SetProjectLastOpened(arg1) {
   return window['go']['main']['App']['SetProjectLastOpened'](arg1);
+}
+
+export function UpdateCommand(arg1, arg2) {
+  return window['go']['main']['App']['UpdateCommand'](arg1, arg2);
 }
 
 export function UpdateSettings(arg1, arg2) {

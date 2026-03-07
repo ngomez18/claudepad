@@ -1,3 +1,32 @@
+export namespace commands {
+	
+	export class Command {
+	    path: string;
+	    filename: string;
+	    name: string;
+	    description: string;
+	    content: string;
+	    modifiedAt: string;
+	    scope: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Command(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.filename = source["filename"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.content = source["content"];
+	        this.modifiedAt = source["modifiedAt"];
+	        this.scope = source["scope"];
+	    }
+	}
+
+}
+
 export namespace plans {
 	
 	export class Plan {
@@ -123,6 +152,35 @@ export namespace settings {
 	        this.path = source["path"];
 	        this.content = source["content"];
 	        this.exists = source["exists"];
+	    }
+	}
+
+}
+
+export namespace skills {
+	
+	export class Skill {
+	    path: string;
+	    dirName: string;
+	    name: string;
+	    description: string;
+	    content: string;
+	    modifiedAt: string;
+	    scope: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Skill(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.dirName = source["dirName"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.content = source["content"];
+	        this.modifiedAt = source["modifiedAt"];
+	        this.scope = source["scope"];
 	    }
 	}
 

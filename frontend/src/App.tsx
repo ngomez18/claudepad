@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   ClipboardList,
   MessageSquare,
@@ -8,15 +8,20 @@ import {
   BarChart2,
   ChevronDown,
   Plus,
+  Globe,
+  FolderOpen,
+  Check,
   type LucideIcon,
 } from 'lucide-react'
 import PlansPage from './pages/Plans'
 import UsagePage from './pages/Usage'
 import SessionsPage from './pages/Sessions'
 import SettingsPage from './pages/Settings'
-import { GetPlans, GetUsageStats, GetSessions, GetProjects, AddProject, PickProjectDir } from '../wailsjs/go/main/App'
+import SkillsPage from './pages/Skills'
+import CommandsPage from './pages/Commands'
+import { GetPlans, GetUsageStats, GetSessions, GetProjects, AddProject, PickProjectDir, GetSkills, GetCommands } from '../wailsjs/go/main/App'
 import { EventsOn } from '../wailsjs/runtime/runtime'
-import type { plans, usage, sessions, projects } from '../wailsjs/go/models'
+import type { plans, usage, sessions, projects, skills, commands } from '../wailsjs/go/models'
 
 interface NavItem {
   id: string
@@ -32,6 +37,74 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'commands', label: 'Commands', Icon: Terminal },
   { id: 'usage',    label: 'Usage',    Icon: BarChart2 },
 ]
+
+function ProjectPicker({ projectId, onProjectChange, projectList, onAddProject }: {
+  projectId: string
+  onProjectChange: (id: string) => void
+  projectList: projects.Project[] | null
+  onAddProject: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const active = projectList?.find(p => p.id === projectId) ?? null
+
+  useEffect(() => {
+    if (!open) return
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative px-3">
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-white/5 border border-white/8 hover:bg-white/8 transition-colors cursor-pointer outline-none text-left"
+        >
+          {active?.is_global
+            ? <Globe className="size-3.5 shrink-0 text-slate-500" />
+            : <FolderOpen className="size-3.5 shrink-0 text-slate-500" />
+          }
+          <span className="flex-1 text-[13px] text-slate-300 truncate">
+            {active?.name ?? 'Loading…'}
+          </span>
+          <ChevronDown className={`size-3.5 shrink-0 text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+        <button
+          onClick={onAddProject}
+          title="Add project"
+          className="shrink-0 size-[30px] flex items-center justify-center rounded-md bg-white/5 border border-white/8 text-slate-500 hover:text-slate-300 hover:bg-white/8 transition-colors cursor-pointer"
+        >
+          <Plus className="size-3.5" />
+        </button>
+      </div>
+
+      {open && (
+        <div className="absolute left-3 right-0 top-full mt-1 z-50 rounded-lg border border-white/8 bg-[#1a2035] shadow-xl overflow-hidden">
+          {projectList?.map(p => (
+            <button
+              key={p.id}
+              onClick={() => { onProjectChange(p.id); setOpen(false) }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-white/5 transition-colors cursor-pointer"
+            >
+              {p.is_global
+                ? <Globe className="size-3.5 shrink-0 text-slate-500" />
+                : <FolderOpen className="size-3.5 shrink-0 text-slate-500" />
+              }
+              <span className={`flex-1 text-[13px] truncate ${p.id === projectId ? 'text-slate-100' : 'text-slate-400'}`}>
+                {p.name}
+              </span>
+              {p.id === projectId && <Check className="size-3 shrink-0 text-blue-400" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function Sidebar({ active, onNavigate, projectId, onProjectChange, projectList }: {
   active: string
@@ -52,29 +125,12 @@ function Sidebar({ active, onNavigate, projectId, onProjectChange, projectList }
         Claudepad
       </div>
 
-      <div className="px-3">
-        <div className="flex items-center gap-1.5">
-          <div className="relative flex-1">
-            <select
-              value={projectId}
-              onChange={e => onProjectChange(e.target.value)}
-              className="w-full appearance-none bg-white/5 border border-white/8 rounded-md px-3 py-1.5 pr-8 text-[14px] text-slate-300 cursor-pointer outline-none hover:bg-white/8 focus:ring-1 focus:ring-white/20 transition-colors"
-            >
-              {projectList?.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              )) ?? <option value="">Loading…</option>}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-500" />
-          </div>
-          <button
-            onClick={handleAddProject}
-            title="Add project"
-            className="shrink-0 size-[30px] flex items-center justify-center rounded-md bg-white/5 border border-white/8 text-slate-500 hover:text-slate-300 hover:bg-white/8 transition-colors cursor-pointer"
-          >
-            <Plus className="size-3.5" />
-          </button>
-        </div>
-      </div>
+      <ProjectPicker
+        projectId={projectId}
+        onProjectChange={onProjectChange}
+        projectList={projectList}
+        onAddProject={handleAddProject}
+      />
 
       <div className="my-4 h-px bg-white/5" />
 
@@ -139,6 +195,36 @@ function usePlans() {
   return { data, refresh: fetch }
 }
 
+function useSkills(projectPath: string) {
+  const [data, setData] = useState<skills.Skill[] | null>(null)
+
+  const fetch = () => GetSkills(projectPath).then(setData).catch(() => setData([]))
+
+  useEffect(() => {
+    setData(null)
+    fetch()
+    const off = EventsOn('skills:updated', fetch)
+    return off
+  }, [projectPath])
+
+  return { data, refresh: fetch }
+}
+
+function useCommands(projectPath: string) {
+  const [data, setData] = useState<commands.Command[] | null>(null)
+
+  const fetch = () => GetCommands(projectPath).then(setData).catch(() => setData([]))
+
+  useEffect(() => {
+    setData(null)
+    fetch()
+    const off = EventsOn('commands:updated', fetch)
+    return off
+  }, [projectPath])
+
+  return { data, refresh: fetch }
+}
+
 function useUsageStats() {
   const [data, setData] = useState<usage.StatsCache | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -157,9 +243,12 @@ function PageContent({ section, activeProject }: { section: string; activeProjec
   const item = NAV_ITEMS.find(n => n.id === section)
   const { data: plansData, refresh: refreshPlans } = usePlans()
   const { data: sessionsData, refresh: refreshSessions } = useSessions()
+  const projectPath = activeProject?.is_global ? '' : (activeProject?.real_path ?? '')
+  const { data: skillsData, refresh: refreshSkills } = useSkills(projectPath)
+  const { data: commandsData, refresh: refreshCommands } = useCommands(projectPath)
   const { data: usageData, error: usageError } = useUsageStats()
 
-  const isEdgeToEdge = section === 'plans' || section === 'sessions'
+  const isEdgeToEdge = section === 'plans' || section === 'sessions' || section === 'skills' || section === 'commands'
 
   return (
     <main className={`flex-1 flex flex-col overflow-hidden bg-[#0f1117] ${isEdgeToEdge ? '' : 'p-10 overflow-y-auto'}`}>
@@ -178,6 +267,10 @@ function PageContent({ section, activeProject }: { section: string; activeProjec
         <SessionsPage sessions={sessionsData} onRefresh={refreshSessions} activeProject={activeProject} />
       ) : section === 'settings' ? (
         <SettingsPage activeProject={activeProject} />
+      ) : section === 'skills' ? (
+        <SkillsPage skills={skillsData} onRefresh={refreshSkills} />
+      ) : section === 'commands' ? (
+        <CommandsPage commands={commandsData} onRefresh={refreshCommands} />
       ) : section === 'usage' ? (
         usageError
           ? <p className="text-sm text-red-400/70">{usageError}</p>

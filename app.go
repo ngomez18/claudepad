@@ -96,3 +96,20 @@ func (a *App) GetSettings(projectPath string) ([]claude.SettingsFile, error) {
 func (a *App) UpdateSettings(path, content string) error {
 	return a.claude.UpdateSettings(path, content)
 }
+
+// GetSkills returns skills from ~/.claude/skills/ (global) merged with <projectPath>/.claude/skills/ (project).
+// Pass empty string for projectPath to get global skills only.
+func (a *App) GetSkills(projectPath string) ([]claude.Skill, error) {
+	return a.claude.GetSkills(projectPath)
+}
+
+// GetCommands returns commands from ~/.claude/commands/ (global) merged with <projectPath>/.claude/commands/ (project).
+// Pass empty string for projectPath to get global commands only.
+func (a *App) GetCommands(projectPath string) ([]claude.Command, error) {
+	return a.claude.GetCommands(projectPath)
+}
+
+// UpdateCommand writes updated content to the given command file path.
+func (a *App) UpdateCommand(path, content string) error {
+	return a.claude.UpdateCommand(path, content)
+}

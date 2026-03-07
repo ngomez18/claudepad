@@ -5,10 +5,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"claudepad/backend/claude/commands"
 	"claudepad/backend/claude/plans"
 	"claudepad/backend/claude/projects"
 	"claudepad/backend/claude/sessions"
 	"claudepad/backend/claude/settings"
+	"claudepad/backend/claude/skills"
 	"claudepad/backend/claude/usage"
 	"claudepad/backend/db"
 	fswatch "claudepad/backend/fs"
@@ -21,6 +23,8 @@ type Session = sessions.Session
 type TranscriptMessage = sessions.TranscriptMessage
 type Project = projects.Project
 type SettingsFile = settings.SettingsFile
+type Skill = skills.Skill
+type Command = commands.Command
 
 // Client provides access to Claude Code's local data files.
 // It owns the file watcher and all path resolution — callers never touch paths directly.
@@ -121,6 +125,20 @@ func (c *Client) registerWatches(emit func(string)) error {
 		return err
 	}
 
+	if err := c.watcher.WatchDir(
+		filepath.Join(globalDir, "skills"),
+		func() { emit("skills:updated") },
+	); err != nil {
+		return err
+	}
+
+	if err := c.watcher.WatchDir(
+		filepath.Join(globalDir, "commands"),
+		func() { emit("commands:updated") },
+	); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -182,4 +200,16 @@ func (c *Client) GetSettings(projectPath string) ([]SettingsFile, error) {
 
 func (c *Client) UpdateSettings(path, content string) error {
 	return settings.WriteSettings(path, content)
+}
+
+func (c *Client) GetSkills(projectPath string) ([]Skill, error) {
+	return skills.ReadSkills(projectPath)
+}
+
+func (c *Client) GetCommands(projectPath string) ([]Command, error) {
+	return commands.ReadCommands(projectPath)
+}
+
+func (c *Client) UpdateCommand(path, content string) error {
+	return commands.WriteCommand(path, content)
 }
