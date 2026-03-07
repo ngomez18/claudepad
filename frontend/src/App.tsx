@@ -12,9 +12,10 @@ import {
 } from 'lucide-react'
 import PlansPage from './pages/Plans'
 import UsagePage from './pages/Usage'
-import { GetPlans, GetUsageStats } from '../wailsjs/go/main/App'
+import SessionsPage from './pages/Sessions'
+import { GetPlans, GetUsageStats, GetSessions } from '../wailsjs/go/main/App'
 import { EventsOn } from '../wailsjs/runtime/runtime'
-import type { plans, usage } from '../wailsjs/go/models'
+import type { plans, usage, sessions } from '../wailsjs/go/models'
 
 interface NavItem {
   id: string
@@ -79,6 +80,20 @@ function Sidebar({ active, onNavigate, project, onProjectChange }: {
   )
 }
 
+function useSessions() {
+  const [data, setData] = useState<sessions.Session[] | null>(null)
+
+  const fetch = () => GetSessions().then(setData).catch(() => setData([]))
+
+  useEffect(() => {
+    fetch()
+    const off = EventsOn('sessions:updated', fetch)
+    return off
+  }, [])
+
+  return { data, refresh: fetch }
+}
+
 function usePlans() {
   const [data, setData] = useState<plans.Plan[] | null>(null)
 
@@ -110,9 +125,10 @@ function useUsageStats() {
 function PageContent({ section, project }: { section: string; project: string }) {
   const item = NAV_ITEMS.find(n => n.id === section)
   const { data: plansData, refresh: refreshPlans } = usePlans()
+  const { data: sessionsData, refresh: refreshSessions } = useSessions()
   const { data: usageData, error: usageError } = useUsageStats()
 
-  const isEdgeToEdge = section === 'plans'
+  const isEdgeToEdge = section === 'plans' || section === 'sessions'
 
   return (
     <main className={`flex-1 flex flex-col overflow-hidden bg-[#0f1117] ${isEdgeToEdge ? '' : 'p-10 overflow-y-auto'}`}>
@@ -127,6 +143,8 @@ function PageContent({ section, project }: { section: string; project: string })
 
       {section === 'plans' ? (
         <PlansPage plans={plansData} onRefresh={refreshPlans} />
+      ) : section === 'sessions' ? (
+        <SessionsPage sessions={sessionsData} onRefresh={refreshSessions} />
       ) : section === 'usage' ? (
         usageError
           ? <p className="text-sm text-red-400/70">{usageError}</p>

@@ -25,6 +25,57 @@ export namespace plans {
 
 }
 
+export namespace sessions {
+	
+	export class Session {
+	    sessionId: string;
+	    projectPath: string;
+	    slug: string;
+	    gitBranch: string;
+	    cwd: string;
+	    messageCount: number;
+	    snippet: string;
+	    startedAt: string;
+	    durationSecs: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Session(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sessionId = source["sessionId"];
+	        this.projectPath = source["projectPath"];
+	        this.slug = source["slug"];
+	        this.gitBranch = source["gitBranch"];
+	        this.cwd = source["cwd"];
+	        this.messageCount = source["messageCount"];
+	        this.snippet = source["snippet"];
+	        this.startedAt = source["startedAt"];
+	        this.durationSecs = source["durationSecs"];
+	    }
+	}
+	export class TranscriptMessage {
+	    role: string;
+	    text: string;
+	    tools: string[];
+	    timestamp: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TranscriptMessage(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.role = source["role"];
+	        this.text = source["text"];
+	        this.tools = source["tools"];
+	        this.timestamp = source["timestamp"];
+	    }
+	}
+
+}
+
 export namespace usage {
 	
 	export class DailyActivity {

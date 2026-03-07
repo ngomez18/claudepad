@@ -6,6 +6,14 @@ export function GetPlans() {
   return window['go']['main']['App']['GetPlans']();
 }
 
+export function GetSessionTranscript(arg1, arg2) {
+  return window['go']['main']['App']['GetSessionTranscript'](arg1, arg2);
+}
+
+export function GetSessions() {
+  return window['go']['main']['App']['GetSessions']();
+}
+
 export function GetUsageStats() {
   return window['go']['main']['App']['GetUsageStats']();
 }

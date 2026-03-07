@@ -59,4 +59,5 @@ SQLite at `~/.claudepad/claudepad.db` stores only enrichment metadata (friendly 
 
 ### Instructions
 - Refer to the files available in `docs/` to understand the project and it's current state
+- Whenever changes are made in `backend/claude`, make sure to also update the corresponding `README.md` files
 - When in need of more details regarding the internal workings of Claude Code, please refer to `docs/claude_code_data.md`. If data is not available there, feel free to explore local `.claude` folders or look up Claude Code documentation online. Avoid speculation.

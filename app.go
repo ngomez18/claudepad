@@ -39,3 +39,13 @@ func (a *App) GetUsageStats() (*claude.StatsCache, error) {
 func (a *App) GetPlans() ([]claude.Plan, error) {
 	return a.claude.GetPlans()
 }
+
+// GetSessions returns all sessions from ~/.claude/projects/.
+func (a *App) GetSessions() ([]claude.Session, error) {
+	return a.claude.GetSessions()
+}
+
+// GetSessionTranscript returns the transcript messages for a session.
+func (a *App) GetSessionTranscript(projectPath, sessionID string) ([]claude.TranscriptMessage, error) {
+	return a.claude.GetSessionTranscript(projectPath, sessionID)
+}
