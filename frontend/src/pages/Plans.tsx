@@ -57,7 +57,7 @@ function PlanRow({
         }`}
     >
       {/* Name */}
-      <div className={`text-[13.5px] font-medium leading-snug truncate mb-1 ${
+      <div className={`text-[15px] font-medium leading-snug truncate mb-1 ${
         selected ? 'text-slate-100' : 'text-slate-300 group-hover:text-slate-200'
       }`}>
         {formatName(plan.filename)}
@@ -72,7 +72,7 @@ function PlanRow({
               style={{ width: `${pct}%` }}
             />
           </div>
-          <span className={`text-[10px] font-mono tabular-nums shrink-0 ${
+          <span className={`text-[11px] font-mono tabular-nums shrink-0 ${
             allDone ? 'text-emerald-500/70' : 'text-slate-600'
           }`}>
             {plan.todoDone}/{plan.todoTotal}
@@ -82,8 +82,8 @@ function PlanRow({
 
       {/* Modified date */}
       <div className="relative group/date inline-block">
-        <span className="text-[11px] text-slate-600">{relativeTime(plan.modifiedAt)}</span>
-        <span className="absolute bottom-full left-0 mb-1.5 px-2 py-1 rounded bg-[#0f1117] border border-white/10 text-[10px] text-slate-400 whitespace-nowrap shadow-lg pointer-events-none opacity-0 group-hover/date:opacity-100 transition-opacity z-10">
+        <span className="text-[12px] text-slate-600">{relativeTime(plan.modifiedAt)}</span>
+        <span className="absolute bottom-full left-0 mb-1.5 px-2 py-1 rounded bg-[#0f1117] border border-white/10 text-[11px] text-slate-400 whitespace-nowrap shadow-lg pointer-events-none opacity-0 group-hover/date:opacity-100 transition-opacity z-10">
           {absoluteTime(plan.modifiedAt)}
         </span>
       </div>
@@ -94,14 +94,14 @@ function PlanRow({
 // ── Markdown components ───────────────────────────────────────────────────────
 
 const markdownComponents: Components = {
-  h1: ({ children }) => <h1 className="text-lg font-semibold text-slate-100 mb-3 mt-6 first:mt-0">{children}</h1>,
-  h2: ({ children }) => <h2 className="text-[15px] font-semibold text-slate-100 mb-2 mt-5 first:mt-0">{children}</h2>,
-  h3: ({ children }) => <h3 className="text-[13px] font-semibold text-slate-200 mb-2 mt-4 first:mt-0">{children}</h3>,
-  p:  ({ children }) => <p className="text-[13px] text-slate-300 leading-relaxed mb-3">{children}</p>,
+  h1: ({ children }) => <h1 className="text-xl font-semibold text-slate-100 mb-3 mt-6 first:mt-0">{children}</h1>,
+  h2: ({ children }) => <h2 className="text-[16px] font-semibold text-slate-100 mb-2 mt-5 first:mt-0">{children}</h2>,
+  h3: ({ children }) => <h3 className="text-[14px] font-semibold text-slate-200 mb-2 mt-4 first:mt-0">{children}</h3>,
+  p:  ({ children }) => <p className="text-[14px] text-slate-300 leading-relaxed mb-3">{children}</p>,
   code: ({ children, className }) => {
     const isBlock = !!className
-    if (isBlock) return <code className="text-slate-300 text-xs font-mono">{children}</code>
-    return <code className="bg-white/8 text-blue-300 px-1.5 py-0.5 rounded text-[11px] font-mono">{children}</code>
+    if (isBlock) return <code className="text-slate-300 text-sm font-mono">{children}</code>
+    return <code className="bg-white/8 text-blue-300 px-1.5 py-0.5 rounded text-[12px] font-mono">{children}</code>
   },
   pre: ({ children }) => <pre className="bg-white/5 rounded-lg p-4 mb-3 overflow-x-auto">{children}</pre>,
   ul: ({ children }) => <ul className="text-slate-300 pl-5 mb-3 space-y-1 list-disc">{children}</ul>,
@@ -118,7 +118,7 @@ const markdownComponents: Components = {
     ) {
       const checked = (firstChild as React.ReactElement<{ checked?: boolean }>).props.checked
       return (
-        <li className="text-[13px] leading-relaxed list-none flex items-start gap-2 -ml-1">
+        <li className="text-[14px] leading-relaxed list-none flex items-start gap-2 -ml-1">
           <span className={`mt-0.75 size-3.5 shrink-0 rounded-[3px] border flex items-center justify-center ${
             checked ? 'bg-blue-500/30 border-blue-500/50' : 'border-white/20'
           }`}>
@@ -128,7 +128,7 @@ const markdownComponents: Components = {
         </li>
       )
     }
-    return <li className="text-[13px] leading-relaxed">{children}</li>
+    return <li className="text-[14px] leading-relaxed">{children}</li>
   },
   blockquote: ({ children }) => <blockquote className="border-l-2 border-white/15 pl-4 text-slate-500 italic mb-3">{children}</blockquote>,
   a: ({ children, href }) => <a href={href} className="text-blue-400 hover:text-blue-300 underline">{children}</a>,
@@ -147,11 +147,11 @@ function PlanDetail({ plan }: { plan: plans.Plan }) {
       {/* Header */}
       <div className="px-8 py-5 border-b border-white/5 shrink-0 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-[15px] font-semibold text-slate-100 leading-snug">
+          <h2 className="text-[16px] font-semibold text-slate-100 leading-snug">
             {formatName(plan.filename)}
           </h2>
           {plan.todoTotal > 0 && (
-            <p className="text-[11px] text-slate-600 mt-1">
+            <p className="text-[12px] text-slate-600 mt-1">
               {plan.todoDone} of {plan.todoTotal} tasks complete
             </p>
           )}
@@ -161,7 +161,7 @@ function PlanDetail({ plan }: { plan: plans.Plan }) {
         <div className="flex items-center gap-0.5 bg-white/4 rounded-md p-0.5 shrink-0">
           <button
             onClick={() => setViewMode('rendered')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] transition-colors ${
               viewMode === 'rendered'
                 ? 'bg-white/10 text-slate-200'
                 : 'text-slate-600 hover:text-slate-400'
@@ -172,7 +172,7 @@ function PlanDetail({ plan }: { plan: plans.Plan }) {
           </button>
           <button
             onClick={() => setViewMode('raw')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] transition-colors ${
               viewMode === 'raw'
                 ? 'bg-white/10 text-slate-200'
                 : 'text-slate-600 hover:text-slate-400'
@@ -192,7 +192,7 @@ function PlanDetail({ plan }: { plan: plans.Plan }) {
               {plan.content}
             </ReactMarkdown>
           ) : (
-            <pre className="text-[13px] leading-relaxed text-slate-300 font-mono whitespace-pre-wrap wrap-break-word">
+            <pre className="text-[14px] leading-relaxed text-slate-300 font-mono whitespace-pre-wrap wrap-break-word">
               {plan.content}
             </pre>
           )}
@@ -206,7 +206,7 @@ function NoSelection() {
   return (
     <div className="flex flex-col items-center justify-center h-full gap-2">
       <FileText className="size-6 text-slate-700" />
-      <p className="text-[13px] text-slate-600">Select a plan to view it</p>
+      <p className="text-[14px] text-slate-600">Select a plan to view it</p>
     </div>
   )
 }
@@ -217,11 +217,11 @@ function EmptyList({ loading }: { loading: boolean }) {
   return (
     <div className="flex flex-col items-center justify-center h-full gap-2 px-6 text-center">
       <FileText className="size-6 text-slate-700" />
-      <p className="text-[13px] text-slate-600">
+      <p className="text-[14px] text-slate-600">
         {loading ? 'Loading…' : 'No plans yet'}
       </p>
       {!loading && (
-        <p className="text-[11px] text-slate-700">
+        <p className="text-[12px] text-slate-700">
           Plans appear here when created in Claude Code
         </p>
       )}
@@ -247,7 +247,7 @@ export default function PlansPage({
       {/* List panel */}
       <Panel defaultSize="280px" minSize="180px" maxSize="60%" className="flex flex-col border-r border-white/5 overflow-hidden">
         <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
-          <span className="text-[11px] font-semibold tracking-widest uppercase text-slate-500">
+          <span className="text-[12px] font-semibold tracking-widest uppercase text-slate-500">
             Plans
           </span>
           <button
@@ -275,7 +275,7 @@ export default function PlansPage({
         </div>
       </Panel>
 
-      <PanelResizeHandle className="w-1.25 group flex items-stretch justify-center cursor-col-resize">
+      <PanelResizeHandle className="w-3 group flex items-stretch justify-center cursor-col-resize">
         <div className="w-px bg-white/5 group-hover:bg-blue-500/40 transition-colors" />
       </PanelResizeHandle>
 

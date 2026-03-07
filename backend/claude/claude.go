@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"claudepad/backend/claude/plans"
+	"claudepad/backend/claude/projects"
 	"claudepad/backend/claude/sessions"
 	"claudepad/backend/claude/usage"
 	"claudepad/backend/db"
@@ -17,6 +18,7 @@ type StatsCache = usage.StatsCache
 type Plan = plans.Plan
 type Session = sessions.Session
 type TranscriptMessage = sessions.TranscriptMessage
+type Project = projects.Project
 
 // Client provides access to Claude Code's local data files.
 // It owns the file watcher and all path resolution — callers never touch paths directly.
@@ -48,7 +50,26 @@ func (c *Client) Start(_ context.Context, emit func(event string)) error {
 		return err
 	}
 	c.watcher = w
-	return c.registerWatches(emit)
+	if err := c.registerWatches(emit); err != nil {
+		return err
+	}
+
+	// Auto-discover projects from disk on startup (best-effort).
+	go func() {
+		claudeDir := filepath.Join(home, ".claude")
+		discovered, err := projects.DiscoverProjects(c.db.Conn(), claudeDir)
+		if err != nil {
+			return
+		}
+		for _, p := range discovered {
+			_, _ = projects.AddProject(c.db.Conn(), p.RealPath)
+		}
+		if len(discovered) > 0 {
+			emit("projects:updated")
+		}
+	}()
+
+	return nil
 }
 
 // Stop shuts down the file watcher and database connection.
@@ -108,4 +129,40 @@ func (c *Client) GetSessions() ([]Session, error) {
 
 func (c *Client) GetSessionTranscript(projectPath, sessionID string) ([]TranscriptMessage, error) {
 	return sessions.ReadTranscript(projectPath, sessionID)
+}
+
+func (c *Client) claudeDir() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".claude"), nil
+}
+
+func (c *Client) GetProjects() ([]Project, error) {
+	dir, err := c.claudeDir()
+	if err != nil {
+		return nil, err
+	}
+	return projects.ReadProjects(c.db.Conn(), dir)
+}
+
+func (c *Client) DiscoverProjects() ([]Project, error) {
+	dir, err := c.claudeDir()
+	if err != nil {
+		return nil, err
+	}
+	return projects.DiscoverProjects(c.db.Conn(), dir)
+}
+
+func (c *Client) AddProject(path string) (Project, error) {
+	return projects.AddProject(c.db.Conn(), path)
+}
+
+func (c *Client) RemoveProject(id string) error {
+	return projects.RemoveProject(c.db.Conn(), id)
+}
+
+func (c *Client) SetProjectLastOpened(id string) error {
+	return projects.UpdateLastOpened(c.db.Conn(), id)
 }

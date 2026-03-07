@@ -68,7 +68,7 @@ function StatCard({ icon: Icon, label, value, sub, accent = 'text-blue-400' }: S
   return (
     <div className="relative overflow-hidden rounded-xl bg-[#161b27] border border-white/5 p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-semibold tracking-widest uppercase text-slate-500">
+        <span className="text-[12px] font-semibold tracking-widest uppercase text-slate-500">
           {label}
         </span>
         <div className={`${accent} opacity-60`}>
@@ -82,7 +82,7 @@ function StatCard({ icon: Icon, label, value, sub, accent = 'text-blue-400' }: S
       </div>
 
       {sub && (
-        <div className="text-[11px] text-slate-600 font-medium">{sub}</div>
+        <div className="text-[12px] text-slate-600 font-medium">{sub}</div>
       )}
 
       {/* subtle corner glow */}
@@ -114,10 +114,10 @@ function ActivityChart({ data }: { data: ReturnType<typeof getLast30Days> }) {
   return (
     <div className="rounded-xl bg-[#161b27] border border-white/5 p-5">
       <div className="flex items-center justify-between mb-5">
-        <span className="text-[11px] font-semibold tracking-widest uppercase text-slate-500">
+        <span className="text-[12px] font-semibold tracking-widest uppercase text-slate-500">
           Daily Activity
         </span>
-        <span className="text-[11px] text-slate-600">last 30 days · messages</span>
+        <span className="text-[12px] text-slate-600">last 30 days · messages</span>
       </div>
 
       {/* Chart */}
@@ -146,13 +146,13 @@ function ActivityChart({ data }: { data: ReturnType<typeof getLast30Days> }) {
                 {/* Tooltip */}
                 {isHovered && (
                   <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-                    <div className="bg-[#0f1117] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs whitespace-nowrap shadow-xl">
-                      <div className="text-slate-500 text-[10px] mb-0.5">{fmtDate(day.date)}</div>
+                    <div className="bg-[#0f1117] border border-white/10 rounded-lg px-2.5 py-1.5 text-sm whitespace-nowrap shadow-xl">
+                      <div className="text-slate-500 text-[11px] mb-0.5">{fmtDate(day.date)}</div>
                       <div className="text-slate-200 font-mono font-semibold">
                         {day.messageCount.toLocaleString()} msgs
                       </div>
                       {day.sessionCount > 0 && (
-                        <div className="text-slate-600 text-[10px]">{day.sessionCount} sessions</div>
+                        <div className="text-slate-600 text-[11px]">{day.sessionCount} sessions</div>
                       )}
                     </div>
                   </div>
@@ -178,7 +178,7 @@ function ActivityChart({ data }: { data: ReturnType<typeof getLast30Days> }) {
           {monthLabels.map(({ idx, label }) => (
             <span
               key={label}
-              className="absolute text-[10px] text-slate-600 font-medium"
+              className="absolute text-[11px] text-slate-600 font-medium"
               style={{ left: `${(idx / 30) * 100}%` }}
             >
               {label}
@@ -211,7 +211,7 @@ function ModelTable({ modelUsage }: { modelUsage: StatsCache['modelUsage'] }) {
   return (
     <div className="rounded-xl bg-[#161b27] border border-white/5 overflow-hidden">
       <div className="px-5 py-4 border-b border-white/5">
-        <span className="text-[11px] font-semibold tracking-widest uppercase text-slate-500">
+        <span className="text-[12px] font-semibold tracking-widest uppercase text-slate-500">
           Model Breakdown
         </span>
       </div>
@@ -222,7 +222,7 @@ function ModelTable({ modelUsage }: { modelUsage: StatsCache['modelUsage'] }) {
             {['Model', 'Input', 'Output', 'Cache Read', 'Cache Create'].map(h => (
               <th
                 key={h}
-                className="px-5 py-3 text-left text-[11px] font-semibold tracking-wider text-slate-600 uppercase"
+                className="px-5 py-3 text-left text-[12px] font-semibold tracking-wider text-slate-600 uppercase"
               >
                 {h}
               </th>
@@ -243,16 +243,16 @@ function ModelTable({ modelUsage }: { modelUsage: StatsCache['modelUsage'] }) {
                   <span className="text-slate-300 font-medium">{row.displayName}</span>
                 </span>
               </td>
-              <td className="px-5 py-3.5 font-mono text-[13px] text-slate-400" title={fmtFull(row.inputTokens)}>
+              <td className="px-5 py-3.5 font-mono text-[14px] text-slate-400" title={fmtFull(row.inputTokens)}>
                 {fmt(row.inputTokens)}
               </td>
-              <td className="px-5 py-3.5 font-mono text-[13px] text-blue-300" title={fmtFull(row.outputTokens)}>
+              <td className="px-5 py-3.5 font-mono text-[14px] text-blue-300" title={fmtFull(row.outputTokens)}>
                 {fmt(row.outputTokens)}
               </td>
-              <td className="px-5 py-3.5 font-mono text-[13px] text-emerald-400/80" title={fmtFull(row.cacheReadInputTokens)}>
+              <td className="px-5 py-3.5 font-mono text-[14px] text-emerald-400/80" title={fmtFull(row.cacheReadInputTokens)}>
                 {fmt(row.cacheReadInputTokens)}
               </td>
-              <td className="px-5 py-3.5 font-mono text-[13px] text-amber-400/80" title={fmtFull(row.cacheCreationInputTokens)}>
+              <td className="px-5 py-3.5 font-mono text-[14px] text-amber-400/80" title={fmtFull(row.cacheCreationInputTokens)}>
                 {fmt(row.cacheCreationInputTokens)}
               </td>
             </tr>
@@ -270,7 +270,7 @@ function EmptyState() {
     <div className="flex flex-col items-center justify-center h-64 gap-3">
       <BarChart3 className="size-8 text-slate-700" />
       <p className="text-slate-600 text-sm">No usage data found</p>
-      <p className="text-slate-700 text-xs">Start a Claude Code session to see stats here</p>
+      <p className="text-slate-700 text-sm">Start a Claude Code session to see stats here</p>
     </div>
   )
 }
@@ -305,14 +305,14 @@ export default function UsagePage({ data }: { data: StatsCache | null }) {
       <div className="flex items-center gap-1.5 self-start">
         <div className="relative group">
           <div className={`size-2 rounded-full ${isStale ? 'bg-orange-500' : 'bg-green-500'}`} />
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded bg-[#0f1117] border border-white/10 text-[11px] whitespace-nowrap shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded bg-[#0f1117] border border-white/10 text-[12px] whitespace-nowrap shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
             {isStale
               ? <span className="text-orange-400">Stale — Claude Code hasn't run today</span>
               : <span className="text-green-400">Up to date</span>
             }
           </div>
         </div>
-        <span className="text-[11px] text-slate-600">
+        <span className="text-[12px] text-slate-600">
           Last computed {fmtFullDate(data.lastComputedDate)}
         </span>
       </div>

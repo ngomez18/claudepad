@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { MessageSquare, RotateCcw, GitBranch, Clock, Hash, Wrench } from 'lucide-react'
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels'
 import { GetSessionTranscript } from '../../wailsjs/go/main/App'
-import type { sessions } from '../../wailsjs/go/models'
+import type { sessions, projects } from '../../wailsjs/go/models'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -63,7 +63,7 @@ function SessionRow({
         }`}
     >
       {/* Slug or snippet */}
-      <div className={`text-[13.5px] font-medium leading-snug truncate mb-1 ${
+      <div className={`text-[15px] font-medium leading-snug truncate mb-1 ${
         selected ? 'text-slate-100' : 'text-slate-300 group-hover:text-slate-200'
       }`}>
         {sessionLabel(session)}
@@ -71,21 +71,21 @@ function SessionRow({
 
       {/* Meta row */}
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-[11px] text-slate-600 font-mono">
+        <span className="text-[12px] text-slate-600 font-mono">
           {decodeProjectName(session.projectPath)}
         </span>
         {session.gitBranch && (
-          <span className="flex items-center gap-1 text-[10px] text-slate-600 bg-white/4 px-1.5 py-0.5 rounded">
+          <span className="flex items-center gap-1 text-[11px] text-slate-600 bg-white/4 px-1.5 py-0.5 rounded">
             <GitBranch className="size-2.5" />
             {session.gitBranch}
           </span>
         )}
         {session.messageCount > 0 && (
-          <span className="text-[10px] text-slate-700 tabular-nums">
+          <span className="text-[11px] text-slate-700 tabular-nums">
             {session.messageCount} msg{session.messageCount !== 1 ? 's' : ''}
           </span>
         )}
-        <span className="text-[11px] text-slate-600 ml-auto">
+        <span className="text-[12px] text-slate-600 ml-auto">
           {relativeTime(session.startedAt)}
         </span>
       </div>
@@ -114,29 +114,29 @@ function TranscriptView({
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="px-6 py-4 border-b border-white/5 shrink-0">
-        <div className="text-[14px] font-semibold text-slate-100 leading-snug truncate mb-1.5">
+        <div className="text-[15px] font-semibold text-slate-100 leading-snug truncate mb-1.5">
           {sessionLabel(session)}
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           {session.cwd && (
-            <span className="text-[11px] text-slate-600 font-mono truncate max-w-[240px]" title={session.cwd}>
+            <span className="text-[12px] text-slate-600 font-mono truncate max-w-[240px]" title={session.cwd}>
               {session.cwd}
             </span>
           )}
           {session.gitBranch && (
-            <span className="flex items-center gap-1 text-[10px] text-slate-600">
+            <span className="flex items-center gap-1 text-[11px] text-slate-600">
               <GitBranch className="size-3" />
               {session.gitBranch}
             </span>
           )}
           {session.durationSecs > 0 && (
-            <span className="flex items-center gap-1 text-[10px] text-slate-600">
+            <span className="flex items-center gap-1 text-[11px] text-slate-600">
               <Clock className="size-3" />
               {formatDuration(session.durationSecs)}
             </span>
           )}
           {session.messageCount > 0 && (
-            <span className="flex items-center gap-1 text-[10px] text-slate-600">
+            <span className="flex items-center gap-1 text-[11px] text-slate-600">
               <Hash className="size-3" />
               {session.messageCount} messages
             </span>
@@ -148,11 +148,11 @@ function TranscriptView({
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {loading ? (
           <div className="flex items-center justify-center h-full">
-            <p className="text-[13px] text-slate-600">Loading…</p>
+            <p className="text-[14px] text-slate-600">Loading…</p>
           </div>
         ) : !transcript || transcript.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <p className="text-[13px] text-slate-600">No messages</p>
+            <p className="text-[14px] text-slate-600">No messages</p>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
@@ -173,13 +173,13 @@ function MessageBubble({ msg }: { msg: sessions.TranscriptMessage }) {
   return (
     <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} gap-1 max-w-[85%] ${isUser ? 'self-end' : 'self-start'}`}>
       {isUser ? (
-        <div className="bg-white/5 rounded-xl rounded-tr-sm px-3.5 py-2.5 text-[13px] text-slate-200 leading-relaxed whitespace-pre-wrap break-words">
+        <div className="bg-white/5 rounded-xl rounded-tr-sm px-3.5 py-2.5 text-[14px] text-slate-200 leading-relaxed whitespace-pre-wrap break-words">
           {msg.text}
         </div>
       ) : (
         <>
           {msg.text && (
-            <div className="text-[13px] text-slate-300 leading-relaxed whitespace-pre-wrap break-words px-1">
+            <div className="text-[14px] text-slate-300 leading-relaxed whitespace-pre-wrap break-words px-1">
               {msg.text}
             </div>
           )}
@@ -189,7 +189,7 @@ function MessageBubble({ msg }: { msg: sessions.TranscriptMessage }) {
               {msg.tools.map((tool, i) => (
                 <span
                   key={i}
-                  className="bg-white/[0.04] text-slate-500 text-[11px] px-2 py-0.5 rounded-full font-mono"
+                  className="bg-white/[0.04] text-slate-500 text-[12px] px-2 py-0.5 rounded-full font-mono"
                 >
                   {tool}
                 </span>
@@ -208,7 +208,7 @@ function NoSelection() {
   return (
     <div className="flex flex-col items-center justify-center h-full gap-2">
       <MessageSquare className="size-6 text-slate-700" />
-      <p className="text-[13px] text-slate-600">Select a session to view its transcript</p>
+      <p className="text-[14px] text-slate-600">Select a session to view its transcript</p>
     </div>
   )
 }
@@ -217,11 +217,11 @@ function EmptyList({ loading }: { loading: boolean }) {
   return (
     <div className="flex flex-col items-center justify-center h-full gap-2 px-6 text-center">
       <MessageSquare className="size-6 text-slate-700" />
-      <p className="text-[13px] text-slate-600">
+      <p className="text-[14px] text-slate-600">
         {loading ? 'Loading…' : 'No sessions found'}
       </p>
       {!loading && (
-        <p className="text-[11px] text-slate-700">
+        <p className="text-[12px] text-slate-700">
           Sessions appear here after using Claude Code
         </p>
       )}
@@ -234,16 +234,26 @@ function EmptyList({ loading }: { loading: boolean }) {
 export default function SessionsPage({
   sessions: sessionList,
   onRefresh,
+  activeProject,
 }: {
   sessions: sessions.Session[] | null
   onRefresh: () => void
+  activeProject: projects.Project | null
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [transcript, setTranscript] = useState<sessions.TranscriptMessage[] | null>(null)
   const [loadingTranscript, setLoadingTranscript] = useState(false)
   const [filter, setFilter] = useState('')
 
-  const selected = sessionList?.find(s => s.sessionId === selectedId) ?? null
+  // When project changes, clear selected session.
+  useEffect(() => { setSelectedId(null) }, [activeProject?.id])
+
+  // Filter by active project (client-side).
+  const projectFiltered = activeProject?.is_global
+    ? sessionList
+    : sessionList?.filter(s => s.projectPath === activeProject?.encoded_name) ?? null
+
+  const selected = projectFiltered?.find(s => s.sessionId === selectedId) ?? null
 
   function handleSelect(session: sessions.Session) {
     if (session.sessionId === selectedId) return
@@ -257,7 +267,7 @@ export default function SessionsPage({
   }
 
   const filterLower = filter.toLowerCase()
-  const filtered = sessionList?.filter(s => {
+  const filtered = projectFiltered?.filter(s => {
     if (!filter) return true
     return (
       s.slug.toLowerCase().includes(filterLower) ||
@@ -272,7 +282,7 @@ export default function SessionsPage({
       <Panel defaultSize="300px" minSize="200px" maxSize="60%" className="flex flex-col border-r border-white/5 overflow-hidden">
         {/* Header */}
         <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
-          <span className="text-[11px] font-semibold tracking-widest uppercase text-slate-500">
+          <span className="text-[12px] font-semibold tracking-widest uppercase text-slate-500">
             Sessions
           </span>
           <button
@@ -291,14 +301,14 @@ export default function SessionsPage({
             placeholder="Filter sessions…"
             value={filter}
             onChange={e => setFilter(e.target.value)}
-            className="w-full bg-white/4 border border-white/6 rounded-md px-3 py-1.5 text-[12px] text-slate-300 placeholder:text-slate-600 outline-none focus:ring-1 focus:ring-white/15 transition-colors"
+            className="w-full bg-white/4 border border-white/6 rounded-md px-3 py-1.5 text-[13px] text-slate-300 placeholder:text-slate-600 outline-none focus:ring-1 focus:ring-white/15 transition-colors"
           />
         </div>
 
         {/* List */}
         <div className="flex-1 overflow-y-auto">
           {!filtered || filtered.length === 0 ? (
-            <EmptyList loading={sessionList === null} />
+            <EmptyList loading={projectFiltered === null} />
           ) : (
             filtered.map(session => (
               <SessionRow
@@ -312,7 +322,7 @@ export default function SessionsPage({
         </div>
       </Panel>
 
-      <PanelResizeHandle className="w-1.25 group flex items-stretch justify-center cursor-col-resize">
+      <PanelResizeHandle className="w-3 group flex items-stretch justify-center cursor-col-resize">
         <div className="w-px bg-white/5 group-hover:bg-blue-500/40 transition-colors" />
       </PanelResizeHandle>
 

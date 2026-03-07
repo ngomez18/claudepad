@@ -55,3 +55,6 @@ func Open(path string) (*DB, error) {
 func (d *DB) Close() error {
 	return d.conn.Close()
 }
+
+// Conn returns the underlying *sql.DB for direct use by domain packages.
+func (d *DB) Conn() *sql.DB { return d.conn }

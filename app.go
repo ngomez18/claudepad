@@ -49,3 +49,40 @@ func (a *App) GetSessions() ([]claude.Session, error) {
 func (a *App) GetSessionTranscript(projectPath, sessionID string) ([]claude.TranscriptMessage, error) {
 	return a.claude.GetSessionTranscript(projectPath, sessionID)
 }
+
+// GetProjects returns all registered projects, global first.
+func (a *App) GetProjects() ([]claude.Project, error) {
+	return a.claude.GetProjects()
+}
+
+// AddProject registers a directory as a project.
+func (a *App) AddProject(path string) error {
+	_, err := a.claude.AddProject(path)
+	if err != nil {
+		return err
+	}
+	runtime.EventsEmit(a.ctx, "projects:updated")
+	return nil
+}
+
+// RemoveProject removes a project by ID.
+func (a *App) RemoveProject(id string) error {
+	if err := a.claude.RemoveProject(id); err != nil {
+		return err
+	}
+	runtime.EventsEmit(a.ctx, "projects:updated")
+	return nil
+}
+
+// PickProjectDir opens a native folder picker and returns the selected path.
+func (a *App) PickProjectDir() string {
+	path, _ := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select project directory",
+	})
+	return path
+}
+
+// SetProjectLastOpened updates the last_opened timestamp for a project.
+func (a *App) SetProjectLastOpened(id string) error {
+	return a.claude.SetProjectLastOpened(id)
+}

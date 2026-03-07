@@ -25,6 +25,35 @@ export namespace plans {
 
 }
 
+export namespace projects {
+	
+	export class Project {
+	    id: string;
+	    name: string;
+	    real_path: string;
+	    is_global: boolean;
+	    encoded_name: string;
+	    last_opened: string;
+	    created_at: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Project(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.real_path = source["real_path"];
+	        this.is_global = source["is_global"];
+	        this.encoded_name = source["encoded_name"];
+	        this.last_opened = source["last_opened"];
+	        this.created_at = source["created_at"];
+	    }
+	}
+
+}
+
 export namespace sessions {
 	
 	export class Session {
