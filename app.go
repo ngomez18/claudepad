@@ -86,3 +86,13 @@ func (a *App) PickProjectDir() string {
 func (a *App) SetProjectLastOpened(id string) error {
 	return a.claude.SetProjectLastOpened(id)
 }
+
+// GetSettings returns settings files for the global and optionally project layer.
+func (a *App) GetSettings(projectPath string) ([]claude.SettingsFile, error) {
+	return a.claude.GetSettings(projectPath)
+}
+
+// UpdateSettings validates and writes JSON content to the given settings file path.
+func (a *App) UpdateSettings(path, content string) error {
+	return a.claude.UpdateSettings(path, content)
+}

@@ -105,6 +105,29 @@ export namespace sessions {
 
 }
 
+export namespace settings {
+	
+	export class SettingsFile {
+	    layer: string;
+	    path: string;
+	    content: string;
+	    exists: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new SettingsFile(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.layer = source["layer"];
+	        this.path = source["path"];
+	        this.content = source["content"];
+	        this.exists = source["exists"];
+	    }
+	}
+
+}
+
 export namespace usage {
 	
 	export class DailyActivity {

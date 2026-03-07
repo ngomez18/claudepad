@@ -22,6 +22,10 @@ export function GetSessions() {
   return window['go']['main']['App']['GetSessions']();
 }
 
+export function GetSettings(arg1) {
+  return window['go']['main']['App']['GetSettings'](arg1);
+}
+
 export function GetUsageStats() {
   return window['go']['main']['App']['GetUsageStats']();
 }
@@ -36,4 +40,8 @@ export function RemoveProject(arg1) {
 
 export function SetProjectLastOpened(arg1) {
   return window['go']['main']['App']['SetProjectLastOpened'](arg1);
+}
+
+export function UpdateSettings(arg1, arg2) {
+  return window['go']['main']['App']['UpdateSettings'](arg1, arg2);
 }

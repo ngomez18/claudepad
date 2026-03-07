@@ -3,6 +3,7 @@
 import {plans} from '../models';
 import {projects} from '../models';
 import {sessions} from '../models';
+import {settings} from '../models';
 import {usage} from '../models';
 
 export function AddProject(arg1:string):Promise<void>;
@@ -15,6 +16,8 @@ export function GetSessionTranscript(arg1:string,arg2:string):Promise<Array<sess
 
 export function GetSessions():Promise<Array<sessions.Session>>;
 
+export function GetSettings(arg1:string):Promise<Array<settings.SettingsFile>>;
+
 export function GetUsageStats():Promise<usage.StatsCache>;
 
 export function PickProjectDir():Promise<string>;
@@ -22,3 +25,5 @@ export function PickProjectDir():Promise<string>;
 export function RemoveProject(arg1:string):Promise<void>;
 
 export function SetProjectLastOpened(arg1:string):Promise<void>;
+
+export function UpdateSettings(arg1:string,arg2:string):Promise<void>;

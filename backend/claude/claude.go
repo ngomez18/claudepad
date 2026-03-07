@@ -8,6 +8,7 @@ import (
 	"claudepad/backend/claude/plans"
 	"claudepad/backend/claude/projects"
 	"claudepad/backend/claude/sessions"
+	"claudepad/backend/claude/settings"
 	"claudepad/backend/claude/usage"
 	"claudepad/backend/db"
 	fswatch "claudepad/backend/fs"
@@ -19,6 +20,7 @@ type Plan = plans.Plan
 type Session = sessions.Session
 type TranscriptMessage = sessions.TranscriptMessage
 type Project = projects.Project
+type SettingsFile = settings.SettingsFile
 
 // Client provides access to Claude Code's local data files.
 // It owns the file watcher and all path resolution — callers never touch paths directly.
@@ -98,6 +100,13 @@ func (c *Client) registerWatches(emit func(string)) error {
 		return err
 	}
 
+	if err := c.watcher.Watch(
+		filepath.Join(globalDir, "settings.json"),
+		func() { emit("settings:updated") },
+	); err != nil {
+		return err
+	}
+
 	if err := c.watcher.WatchDir(
 		filepath.Join(globalDir, "plans"),
 		func() { emit("plans:updated") },
@@ -165,4 +174,12 @@ func (c *Client) RemoveProject(id string) error {
 
 func (c *Client) SetProjectLastOpened(id string) error {
 	return projects.UpdateLastOpened(c.db.Conn(), id)
+}
+
+func (c *Client) GetSettings(projectPath string) ([]SettingsFile, error) {
+	return settings.ReadSettings(projectPath)
+}
+
+func (c *Client) UpdateSettings(path, content string) error {
+	return settings.WriteSettings(path, content)
 }

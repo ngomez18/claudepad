@@ -25,9 +25,8 @@ Claudepad is a local-first desktop app (with a browser mode) that reads and enri
 |---|---|
 | **Plans** | Markdown plan files from `~/.claude/plans/`, with friendly names, tags, and todo progress |
 | **Sessions** | Session transcripts from `~/.claude/projects/`, browsable and searchable |
-| **Settings** | Multi-layer `settings.json` hierarchy visualized and editable per layer |
+| **Settings** | Multi-layer `settings.json` hierarchy editable per layer — includes hooks, permissions, and model config |
 | **Skills** | `.claude/skills/` markdown files with metadata enrichment |
-| **Hooks** | Hooks from `settings.json`, with safe enable/disable toggling |
 | **Commands** | `.claude/commands/` slash command files with metadata enrichment |
 | **Usage** | Dashboard from `~/.claude/stats-cache.json` — activity, tokens, model breakdown |
 
@@ -36,8 +35,6 @@ Claudepad is a local-first desktop app (with a browser mode) that reads and enri
 ## Key Design Principles
 
 **Never break Claude Code.** Claudepad does not rename or delete Claude's files. Friendly names, tags, and notes live only in Claudepad's SQLite database. The real filenames on disk are never touched.
-
-**Safe hook toggling.** JSON doesn't support comments, so disabled hooks are moved to a `_disabled_hooks` key in `settings.json` that Claude Code doesn't recognize. Re-enabling moves them back. Claudepad owns this translation transparently.
 
 **Enrichment layer, not replacement.** The `.claude/` files are always the source of truth. Claudepad reads them, enriches them with metadata, and writes back only when the user explicitly edits content.
 
@@ -147,7 +144,6 @@ claudepad/
 │   │   ├── fs.go                   # .claude dir discovery, fsnotify watcher
 │   │   ├── settings.go             # read/write settings.json hierarchy
 │   │   ├── skills.go               # read/write .claude/skills/
-│   │   ├── hooks.go                # hook parsing, _disabled_hooks translation
 │   │   ├── commands.go             # read/write .claude/commands/
 │   │   ├── plans.go                # read plans/, parse todos on-the-fly
 │   │   ├── sessions.go             # parse projects/ JSONL transcripts
@@ -163,7 +159,6 @@ claudepad/
 │       ├── handlers/               # One file per domain
 │       │   ├── settings.go
 │       │   ├── skills.go
-│       │   ├── hooks.go
 │       │   ├── commands.go
 │       │   ├── plans.go
 │       │   ├── sessions.go
@@ -184,7 +179,6 @@ claudepad/
     │   │   ├── Sessions.tsx
     │   │   ├── Settings.tsx
     │   │   ├── Skills.tsx
-    │   │   ├── Hooks.tsx
     │   │   ├── Commands.tsx
     │   │   └── Usage.tsx
     │   └── main.tsx
@@ -238,7 +232,6 @@ TanStack Query          (caching, invalidation, loading/error states)
 │ 💬 Sessions│                                     │
 │ ⚙ Settings│        main content area            │
 │ 🧠 Skills  │                                     │
-│ 🪝 Hooks   │                                     │
 │ > Commands│                                      │
 │ 📊 Usage  │                                      │
 └──────────┴──────────────────────────────────────┘
@@ -257,13 +250,10 @@ List view. Each row: friendly name (fallback to real filename), tags, todo progr
 Sortable, filterable table. Columns: date, duration, message count, first message snippet, git branch. Click row opens master-detail: read-only transcript viewer on the right, rendered as a clean conversation (not raw JSONL). Session data parsed from `~/.claude/projects/{encoded-path}/*.jsonl`.
 
 **Settings**
-Master-detail. Left: tree of config keys grouped by layer (global user, project, local project), with a source badge per key and a conflict indicator on keys that are overridden at a higher layer. Right: CodeMirror JSON editor scoped to the selected key and layer. Save writes only to that layer's file.
+Master-detail. Left: tree of config keys grouped by layer (global user, project, local project), with a source badge per key and a conflict indicator on keys that are overridden at a higher layer. Right: CodeMirror JSON editor scoped to the selected key and layer. Save writes only to that layer's file. Hooks are edited directly as JSON within the settings editor — no separate hooks UI.
 
 **Skills**
 Card grid. Each card: friendly name (fallback to directory name), tags, first line of SKILL.md as description, last modified. Click card opens a full editor overlay: CodeMirror markdown editor + metadata panel (friendly name, tags, notes).
-
-**Hooks**
-Full page list. Each row: event type (PreToolUse, PostToolUse, UserPromptSubmit, Stop), matcher pattern, command snippet, enabled/disabled toggle. Expand row for full CodeMirror JSON editor of the hook object. Toggling moves the hook between `hooks` and `_disabled_hooks` in `settings.json`.
 
 **Commands**
 Card grid (same layout as Skills). Each card: friendly name, tags, description from frontmatter or first line, last modified. Click opens editor overlay: CodeMirror markdown editor + metadata panel.

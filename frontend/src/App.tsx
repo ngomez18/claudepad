@@ -4,7 +4,6 @@ import {
   MessageSquare,
   Settings,
   Brain,
-  Webhook,
   Terminal,
   BarChart2,
   ChevronDown,
@@ -14,6 +13,7 @@ import {
 import PlansPage from './pages/Plans'
 import UsagePage from './pages/Usage'
 import SessionsPage from './pages/Sessions'
+import SettingsPage from './pages/Settings'
 import { GetPlans, GetUsageStats, GetSessions, GetProjects, AddProject, PickProjectDir } from '../wailsjs/go/main/App'
 import { EventsOn } from '../wailsjs/runtime/runtime'
 import type { plans, usage, sessions, projects } from '../wailsjs/go/models'
@@ -29,7 +29,6 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'sessions', label: 'Sessions', Icon: MessageSquare },
   { id: 'settings', label: 'Settings', Icon: Settings },
   { id: 'skills',   label: 'Skills',   Icon: Brain },
-  { id: 'hooks',    label: 'Hooks',    Icon: Webhook },
   { id: 'commands', label: 'Commands', Icon: Terminal },
   { id: 'usage',    label: 'Usage',    Icon: BarChart2 },
 ]
@@ -177,6 +176,8 @@ function PageContent({ section, activeProject }: { section: string; activeProjec
         <PlansPage plans={plansData} onRefresh={refreshPlans} />
       ) : section === 'sessions' ? (
         <SessionsPage sessions={sessionsData} onRefresh={refreshSessions} activeProject={activeProject} />
+      ) : section === 'settings' ? (
+        <SettingsPage activeProject={activeProject} />
       ) : section === 'usage' ? (
         usageError
           ? <p className="text-sm text-red-400/70">{usageError}</p>
