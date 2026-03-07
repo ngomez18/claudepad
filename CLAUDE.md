@@ -56,3 +56,6 @@ SQLite at `~/.claudepad/claudepad.db` stores only enrichment metadata (friendly 
 - **Plan todo progress** is computed on-the-fly from markdown `- [x]` / `- [ ]` syntax; no SQLite state for todos.
 - **Wails bindings** in `backend/api/app.go` are thin wrappers — all logic lives in the domain packages under `backend/`.
 - **Browser mode** is launched with `claudepad --browser --port 5173`; requires the full REST layer (not just Wails IPC).
+
+### Instructions
+- When in need of more details regarding the internal workings of Claude Code, please refer to `docs/claude_code_data.md`. If data is not available there, feel free to explore local `.claude` folders or look up Claude Code documentation online. Avoid speculation.

@@ -2,26 +2,35 @@ package main
 
 import (
 	"context"
-	"fmt"
+
+	"claudepad/backend/claude"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
 type App struct {
-	ctx context.Context
+	ctx    context.Context
+	claude *claude.Client
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
-	return &App{}
+	return &App{claude: claude.New()}
 }
 
-// startup is called when the app starts. The context is saved
-// so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	_ = a.claude.Start(ctx, func(event string) {
+		runtime.EventsEmit(ctx, event)
+	})
 }
 
-// Greet returns a greeting for the given name
-func (a *App) Greet(name string) string {
-	return fmt.Sprintf("Hello %s, It's show time!", name)
+func (a *App) shutdown(_ context.Context) {
+	a.claude.Stop()
+}
+
+// GetUsageStats returns the parsed contents of ~/.claude/stats-cache.json.
+func (a *App) GetUsageStats() (*claude.StatsCache, error) {
+	return a.claude.GetUsageStats()
 }
