@@ -1,25 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { MessageSquare, RotateCcw, GitBranch, Clock, Hash, Wrench } from 'lucide-react'
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels'
-import { GetSessionTranscript } from '../../wailsjs/go/main/App'
+import { GetSessionTranscript } from '@/lib/api'
+import { relativeTime } from '@/lib/utils'
 import type { sessions, projects } from '../../wailsjs/go/models'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function relativeTime(iso: string): string {
-  if (!iso) return ''
-  const diff = Date.now() - new Date(iso).getTime()
-  const m = Math.floor(diff / 60000)
-  if (m < 1)   return 'just now'
-  if (m < 60)  return `${m}m ago`
-  const h = Math.floor(m / 60)
-  if (h < 24)  return `${h}h ago`
-  const d = Math.floor(h / 24)
-  if (d === 1) return 'yesterday'
-  if (d < 30)  return `${d}d ago`
-  const mo = Math.floor(d / 30)
-  return `${mo}mo ago`
-}
 
 function formatDuration(secs: number): string {
   if (secs < 60) return `${secs}s`

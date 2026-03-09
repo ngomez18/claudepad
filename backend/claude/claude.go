@@ -30,8 +30,10 @@ type PlanMeta = plans.PlanMeta
 // Client provides access to Claude Code's local data files.
 // It owns the file watcher and all path resolution — callers never touch paths directly.
 type Client struct {
-	watcher *fswatch.Watcher
-	db      *db.DB
+	watcher   *fswatch.Watcher
+	db        *db.DB
+	claudeDir string
+	emit      func(string) // stored for dynamic re-registration (e.g. per-project watches)
 }
 
 func New() *Client {
@@ -40,11 +42,13 @@ func New() *Client {
 
 // Start initialises the database and file watcher. emit is called with an event
 // name whenever a watched file changes; pass runtime.EventsEmit or equivalent.
-func (c *Client) Start(_ context.Context, emit func(event string)) error {
+func (c *Client) Start(ctx context.Context, emit func(event string)) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
 	}
+	c.claudeDir = filepath.Join(home, ".claude")
+
 	d, err := db.Open(filepath.Join(home, ".claudepad", "claudepad.db"))
 	if err != nil {
 		return err
@@ -57,15 +61,20 @@ func (c *Client) Start(_ context.Context, emit func(event string)) error {
 		return err
 	}
 	c.watcher = w
+	c.emit = emit
 	if err := c.registerWatches(emit); err != nil {
 		return err
 	}
 
 	// Auto-discover projects from disk on startup (best-effort).
 	go func() {
-		claudeDir := filepath.Join(home, ".claude")
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
 		q := c.db.Queries()
-		discovered, err := projects.DiscoverProjects(q, claudeDir)
+		discovered, err := projects.DiscoverProjects(q, c.claudeDir)
 		if err != nil {
 			return
 		}
@@ -74,6 +83,14 @@ func (c *Client) Start(_ context.Context, emit func(event string)) error {
 		}
 		if len(discovered) > 0 {
 			emit("projects:updated")
+		}
+
+		// Register per-project watches for all known non-global projects.
+		knownProjects, _ := projects.ReadProjects(q, c.claudeDir)
+		for _, p := range knownProjects {
+			if !p.IsGlobal {
+				c.registerProjectWatches(p.RealPath)
+			}
 		}
 	}()
 
@@ -90,52 +107,55 @@ func (c *Client) Stop() {
 	}
 }
 
-// registerWatches sets up all file watches for the current project set.
-// Called once on Start; will be called again when projects are added/removed.
-func (c *Client) registerWatches(emit func(string)) error {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-	globalDir := filepath.Join(home, ".claude")
+// registerProjectWatches sets up per-project watches for <projectPath>/.claude/.
+// All errors are silently ignored — per-project watches are best-effort.
+func (c *Client) registerProjectWatches(projectPath string) {
+	d := filepath.Join(projectPath, ".claude")
+	_ = c.watcher.Watch(filepath.Join(d, "settings.json"), func() { c.emit("settings:updated") })
+	_ = c.watcher.Watch(filepath.Join(d, "settings.local.json"), func() { c.emit("settings:updated") })
+	_ = c.watcher.WatchDir(filepath.Join(d, "skills"), func() { c.emit("skills:updated") })
+	_ = c.watcher.WatchDir(filepath.Join(d, "commands"), func() { c.emit("commands:updated") })
+}
 
+// registerWatches sets up all file watches for the global ~/.claude/ directory.
+func (c *Client) registerWatches(emit func(string)) error {
 	if err := c.watcher.Watch(
-		filepath.Join(globalDir, "stats-cache.json"),
+		filepath.Join(c.claudeDir, "stats-cache.json"),
 		func() { emit("usage:stats-updated") },
 	); err != nil {
 		return err
 	}
 
 	if err := c.watcher.Watch(
-		filepath.Join(globalDir, "settings.json"),
+		filepath.Join(c.claudeDir, "settings.json"),
 		func() { emit("settings:updated") },
 	); err != nil {
 		return err
 	}
 
 	if err := c.watcher.WatchDir(
-		filepath.Join(globalDir, "plans"),
+		filepath.Join(c.claudeDir, "plans"),
 		func() { emit("plans:updated") },
 	); err != nil {
 		return err
 	}
 
 	if err := c.watcher.WatchDir(
-		filepath.Join(globalDir, "projects"),
+		filepath.Join(c.claudeDir, "projects"),
 		func() { emit("sessions:updated") },
 	); err != nil {
 		return err
 	}
 
 	if err := c.watcher.WatchDir(
-		filepath.Join(globalDir, "skills"),
+		filepath.Join(c.claudeDir, "skills"),
 		func() { emit("skills:updated") },
 	); err != nil {
 		return err
 	}
 
 	if err := c.watcher.WatchDir(
-		filepath.Join(globalDir, "commands"),
+		filepath.Join(c.claudeDir, "commands"),
 		func() { emit("commands:updated") },
 	); err != nil {
 		return err
@@ -168,32 +188,21 @@ func (c *Client) GetSessionTranscript(projectPath, sessionID string) ([]Transcri
 	return sessions.ReadTranscript(projectPath, sessionID)
 }
 
-func (c *Client) claudeDir() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(home, ".claude"), nil
-}
-
 func (c *Client) GetProjects() ([]Project, error) {
-	dir, err := c.claudeDir()
-	if err != nil {
-		return nil, err
-	}
-	return projects.ReadProjects(c.db.Queries(), dir)
+	return projects.ReadProjects(c.db.Queries(), c.claudeDir)
 }
 
 func (c *Client) DiscoverProjects() ([]Project, error) {
-	dir, err := c.claudeDir()
-	if err != nil {
-		return nil, err
-	}
-	return projects.DiscoverProjects(c.db.Queries(), dir)
+	return projects.DiscoverProjects(c.db.Queries(), c.claudeDir)
 }
 
 func (c *Client) AddProject(path string) (Project, error) {
-	return projects.AddProject(c.db.Queries(), path)
+	p, err := projects.AddProject(c.db.Queries(), path)
+	if err != nil {
+		return p, err
+	}
+	c.registerProjectWatches(p.RealPath)
+	return p, nil
 }
 
 func (c *Client) RemoveProject(id string) error {

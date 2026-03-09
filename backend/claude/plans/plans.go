@@ -60,9 +60,12 @@ func enrichPlansFromDB(q *generated.Queries, planList []Plan) {
 		planList[i].Notes = row.Notes
 		planList[i].Archived = row.Archived != 0
 
-		tags := []string{}
-		if row.Tags != "" && row.Tags != "[]" {
+		var tags []string
+		if row.Tags != "" {
 			_ = json.Unmarshal([]byte(row.Tags), &tags)
+		}
+		if tags == nil {
+			tags = []string{}
 		}
 		planList[i].Tags = tags
 	}

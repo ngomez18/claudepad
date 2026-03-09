@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"claudepad/backend/claude/frontmatter"
 )
 
 // ReadCommands reads command files from ~/.claude/commands/ (global) and,
@@ -62,14 +64,14 @@ func readCommandsFrom(dir, scope string) ([]Command, error) {
 
 		info, _ := e.Info()
 		content := string(data)
-		name, description := parseFrontmatter(content)
+		name, description := frontmatter.Parse(content)
 
 		filename := strings.TrimSuffix(e.Name(), ".md")
 		if name == "" {
 			name = filename
 		}
 		if description == "" {
-			description = firstContentLine(content)
+			description = frontmatter.FirstContentLine(content)
 		}
 
 		cmds = append(cmds, Command{
@@ -98,49 +100,3 @@ func WriteCommand(path, content string) error {
 	return os.WriteFile(clean, []byte(content), 0o644)
 }
 
-// parseFrontmatter extracts name and description from YAML frontmatter (---...---).
-func parseFrontmatter(content string) (name, description string) {
-	if !strings.HasPrefix(content, "---") {
-		return "", ""
-	}
-	rest := content[3:]
-	end := strings.Index(rest, "\n---")
-	if end < 0 {
-		return "", ""
-	}
-	block := rest[:end]
-	for _, line := range strings.Split(block, "\n") {
-		line = strings.TrimSpace(line)
-		if k, v, ok := strings.Cut(line, ":"); ok {
-			k = strings.TrimSpace(k)
-			v = strings.TrimSpace(v)
-			switch k {
-			case "name":
-				name = v
-			case "description":
-				description = v
-			}
-		}
-	}
-	return name, description
-}
-
-// firstContentLine returns the first non-empty line that is not part of frontmatter.
-func firstContentLine(content string) string {
-	// Skip frontmatter block if present
-	body := content
-	if strings.HasPrefix(content, "---") {
-		rest := content[3:]
-		end := strings.Index(rest, "\n---")
-		if end >= 0 {
-			body = rest[end+4:] // skip past closing ---
-		}
-	}
-	for _, line := range strings.Split(body, "\n") {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			return line
-		}
-	}
-	return ""
-}

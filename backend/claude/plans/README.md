@@ -25,13 +25,12 @@ Files are read in full with `os.ReadFile`. Two regex passes extract todo progres
 
 ## Sort order
 
-`ReadPlans` applies a three-level sort after DB enrichment:
+`ReadPlans` applies a two-level sort after DB enrichment:
 
 1. **Pinned first** — pinned plans always appear at the top.
-2. **Priority descending** — `high` > `medium` > `low` > none.
-3. **Modified time descending** — newest first within each priority group.
+2. **Modified time descending** — newest first within each pin group.
 
-The internal `readPlansFrom` helper only applies the modified-time sort (no DB access).
+The internal `readPlansFrom` helper applies only the modified-time sort (no DB access).
 
 ## Metadata (via SQLite)
 
@@ -42,8 +41,6 @@ All mutable metadata is stored in the `file_metadata` table (`file_type = 'plan'
 | Field | Type | Description |
 |---|---|---|
 | `Pinned` | `bool` | Pin to top of list |
-| `Priority` | `Priority` | `""`, `"low"`, `"medium"`, or `"high"` |
-| `DueDate` | `string` | `YYYY-MM-DD` or `""` |
 | `ProjectID` | `string` | FK to `projects.id` or `""` |
 | `Tags` | `[]string` | Free-form tags (stored as JSON array) |
 | `Notes` | `string` | Private notes (not shown in plan content) |
@@ -65,16 +62,15 @@ Upserts all `PlanMeta` fields for a plan. Never modifies `friendly_name` — use
 
 ## DB schema (relevant columns)
 
-The migration `20260308000000_plan_metadata.sql` adds these columns to `file_metadata`:
+All plan metadata is stored in the `file_metadata` table. Relevant columns:
 
 ```sql
 pinned     INTEGER NOT NULL DEFAULT 0
-priority   TEXT    NOT NULL DEFAULT ''
-due_date   TEXT    NOT NULL DEFAULT ''
 project_id TEXT    NOT NULL DEFAULT ''
+tags       TEXT    NOT NULL DEFAULT '[]'
+notes      TEXT    NOT NULL DEFAULT ''
+archived   INTEGER NOT NULL DEFAULT 0
 ```
-
-The `tags`, `notes`, and `archived` columns already existed in the initial migration.
 
 ## No file writes
 

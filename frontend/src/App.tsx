@@ -13,14 +13,13 @@ import {
   Check,
   type LucideIcon,
 } from 'lucide-react'
-import PlansPage from './pages/Plans'
-import UsagePage from './pages/Usage'
-import SessionsPage from './pages/Sessions'
-import SettingsPage from './pages/Settings'
-import SkillsPage from './pages/Skills'
-import CommandsPage from './pages/Commands'
-import { GetPlans, GetUsageStats, GetSessions, GetProjects, AddProject, PickProjectDir, GetSkills, GetCommands } from '../wailsjs/go/main/App'
-import { EventsOn } from '../wailsjs/runtime/runtime'
+import PlansPage from '@/pages/Plans'
+import UsagePage from '@/pages/Usage'
+import SessionsPage from '@/pages/Sessions'
+import SettingsPage from '@/pages/Settings'
+import SkillsPage from '@/pages/Skills'
+import CommandsPage from '@/pages/Commands'
+import { GetPlans, GetUsageStats, GetSessions, GetProjects, AddProject, PickProjectDir, GetSkills, GetCommands, EventsOn } from '@/lib/api'
 import type { plans, usage, sessions, projects, skills, commands } from '../wailsjs/go/models'
 
 interface NavItem {

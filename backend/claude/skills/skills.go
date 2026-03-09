@@ -4,8 +4,9 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"time"
+
+	"claudepad/backend/claude/frontmatter"
 )
 
 // ReadSkills reads skill directories from ~/.claude/skills/ (global) and,
@@ -79,12 +80,12 @@ func readSkillsFrom(dir, scope string) ([]Skill, error) {
 			}
 		}
 
-		name, description := parseFrontmatter(content)
+		name, description := frontmatter.Parse(content)
 		if name == "" {
 			name = e.Name()
 		}
 		if description == "" && content != "" {
-			description = firstContentLine(content)
+			description = frontmatter.FirstContentLine(content)
 		}
 
 		skillList = append(skillList, Skill{
@@ -105,48 +106,3 @@ func readSkillsFrom(dir, scope string) ([]Skill, error) {
 	return skillList, nil
 }
 
-// parseFrontmatter extracts name and description from YAML frontmatter (---...---).
-func parseFrontmatter(content string) (name, description string) {
-	if !strings.HasPrefix(content, "---") {
-		return "", ""
-	}
-	rest := content[3:]
-	end := strings.Index(rest, "\n---")
-	if end < 0 {
-		return "", ""
-	}
-	block := rest[:end]
-	for _, line := range strings.Split(block, "\n") {
-		line = strings.TrimSpace(line)
-		if k, v, ok := strings.Cut(line, ":"); ok {
-			k = strings.TrimSpace(k)
-			v = strings.TrimSpace(v)
-			switch k {
-			case "name":
-				name = v
-			case "description":
-				description = v
-			}
-		}
-	}
-	return name, description
-}
-
-// firstContentLine returns the first non-empty non-frontmatter line.
-func firstContentLine(content string) string {
-	body := content
-	if strings.HasPrefix(content, "---") {
-		rest := content[3:]
-		end := strings.Index(rest, "\n---")
-		if end >= 0 {
-			body = rest[end+4:]
-		}
-	}
-	for _, line := range strings.Split(body, "\n") {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			return line
-		}
-	}
-	return ""
-}

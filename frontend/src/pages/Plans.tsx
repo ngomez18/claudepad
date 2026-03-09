@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { FileText, RotateCcw, Eye, Code2, Pencil, Pin, Archive, SlidersHorizontal, ChevronDown, Globe, FolderOpen, Check } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels'
-import { SetPlanName, SetPlanMeta } from '../../wailsjs/go/main/App'
+import { SetPlanName, SetPlanMeta } from '@/lib/api'
+import { relativeTime } from '@/lib/utils'
 import type { plans, projects } from '../../wailsjs/go/models'
 import type { Components } from 'react-markdown'
 
@@ -15,20 +16,6 @@ function formatName(filename: string): string {
 
 function displayName(plan: plans.Plan): string {
   return plan.name || formatName(plan.filename)
-}
-
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const m = Math.floor(diff / 60000)
-  if (m < 1)   return 'just now'
-  if (m < 60)  return `${m}m ago`
-  const h = Math.floor(m / 60)
-  if (h < 24)  return `${h}h ago`
-  const d = Math.floor(h / 24)
-  if (d === 1) return 'yesterday'
-  if (d < 30)  return `${d}d ago`
-  const mo = Math.floor(d / 30)
-  return `${mo}mo ago`
 }
 
 function absoluteTime(iso: string): string {
