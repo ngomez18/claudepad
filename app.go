@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"os/exec"
+	goruntime "runtime"
 
 	"claudepad/backend/claude"
 
@@ -80,6 +82,18 @@ func (a *App) PickProjectDir() string {
 		Title: "Select project directory",
 	})
 	return path
+}
+
+// RevealInFinder reveals a file or directory in the OS file manager.
+func (a *App) RevealInFinder(path string) error {
+	switch goruntime.GOOS {
+	case "darwin":
+		return exec.Command("open", "-R", path).Run()
+	case "windows":
+		return exec.Command("explorer", "/select,"+path).Run()
+	default:
+		return exec.Command("xdg-open", path).Run()
+	}
 }
 
 // SetProjectLastOpened updates the last_opened timestamp for a project.

@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Brain, RotateCcw } from 'lucide-react'
+import { Brain, RotateCcw, FolderOpen } from 'lucide-react'
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels'
+import { RevealInFinder } from '@/lib/api'
 import { relativeTime } from '@/lib/utils'
 import type { skills } from '../../wailsjs/go/models'
 
@@ -54,9 +55,18 @@ function SkillRow({
 function SkillDetail({ skill }: { skill: skills.Skill }) {
   return (
     <div className="flex flex-col h-full">
-      <div className="px-8 py-5 border-b border-white/5 shrink-0">
-        <h2 className="text-[16px] font-semibold text-slate-100 leading-snug">{skill.name}</h2>
-        <p className="text-[12px] text-slate-600 mt-1 font-mono">{skill.path}</p>
+      <div className="px-8 py-5 border-b border-white/5 shrink-0 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="text-[16px] font-semibold text-slate-100 leading-snug">{skill.name}</h2>
+          <p className="text-[12px] text-slate-600 mt-1 font-mono">{skill.path}</p>
+        </div>
+        <button
+          onClick={() => RevealInFinder(skill.path)}
+          title="Reveal in Finder"
+          className="p-1.5 rounded-md transition-colors cursor-pointer text-slate-600 hover:text-slate-400 hover:bg-white/5 shrink-0 mt-0.5"
+        >
+          <FolderOpen className="size-3.5" />
+        </button>
       </div>
       <div className="flex-1 overflow-y-auto">
         <div className="px-8 py-6">

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
+import { FolderOpen } from 'lucide-react'
 import CodeMirror from '@uiw/react-codemirror'
 import { json } from '@codemirror/lang-json'
 import { oneDark } from '@codemirror/theme-one-dark'
-import { GetSettings, UpdateSettings, EventsOn } from '@/lib/api'
+import { GetSettings, UpdateSettings, EventsOn, RevealInFinder } from '@/lib/api'
 import type { settings } from '../../wailsjs/go/models'
 import type { projects } from '../../wailsjs/go/models'
 
@@ -69,7 +70,16 @@ function EditorPanel({ file }: { file: settings.SettingsFile }) {
         </p>
       )}
 
-      <p className="text-xs text-slate-600 font-mono">{file.path}</p>
+      <div className="flex items-center gap-2">
+        <p className="text-xs text-slate-600 font-mono flex-1 min-w-0 truncate">{file.path}</p>
+        <button
+          onClick={() => RevealInFinder(file.path)}
+          title="Reveal in Finder"
+          className="p-1 rounded-md transition-colors cursor-pointer text-slate-600 hover:text-slate-400 hover:bg-white/5 shrink-0"
+        >
+          <FolderOpen className="size-3.5" />
+        </button>
+      </div>
 
       <div className="flex-1 min-h-0 rounded-xl overflow-hidden border border-white/5">
         <CodeMirror

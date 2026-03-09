@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { FileText, RotateCcw, Eye, Code2, Pencil, Pin, Archive, SlidersHorizontal, ChevronDown, Globe, FolderOpen, Check } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels'
-import { SetPlanName, SetPlanMeta } from '@/lib/api'
+import { SetPlanName, SetPlanMeta, RevealInFinder } from '@/lib/api'
 import { relativeTime } from '@/lib/utils'
 import type { plans, projects } from '../../wailsjs/go/models'
 import type { Components } from 'react-markdown'
@@ -482,6 +482,15 @@ function PlanDetail({ plan, onRefresh, projectList }: {
 
         {/* Right: actions (shrink-0 keeps this from wrapping) */}
         <div className="flex items-center gap-1 shrink-0">
+          {/* Reveal in Finder */}
+          <button
+            onClick={() => RevealInFinder(plan.path)}
+            title="Reveal in Finder"
+            className="p-1.5 rounded-md transition-colors cursor-pointer text-slate-600 hover:text-slate-400 hover:bg-white/5"
+          >
+            <FolderOpen className="size-3.5" />
+          </button>
+
           {/* Archive */}
           <button
             onClick={toggleArchive}

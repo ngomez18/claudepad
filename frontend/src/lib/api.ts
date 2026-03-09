@@ -18,6 +18,7 @@ export {
   SetPlanName,
   SetPlanMeta,
   SetProjectLastOpened,
+  RevealInFinder,
 } from '../../wailsjs/go/main/App'
 
 export { EventsOn } from '../../wailsjs/runtime/runtime'

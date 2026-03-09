@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Terminal, RotateCcw } from 'lucide-react'
+import { Terminal, RotateCcw, FolderOpen } from 'lucide-react'
 import CodeMirror from '@uiw/react-codemirror'
 import { markdown } from '@codemirror/lang-markdown'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels'
-import { UpdateCommand } from '@/lib/api'
+import { UpdateCommand, RevealInFinder } from '@/lib/api'
 import { relativeTime } from '@/lib/utils'
 import type { commands } from '../../wailsjs/go/models'
 
@@ -95,9 +95,18 @@ function CommandDetail({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-8 py-5 border-b border-white/5 shrink-0">
-        <h2 className="text-[16px] font-semibold text-slate-100 leading-snug">{command.name}</h2>
-        <p className="text-[12px] text-slate-600 mt-1 font-mono">{command.path}</p>
+      <div className="px-8 py-5 border-b border-white/5 shrink-0 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="text-[16px] font-semibold text-slate-100 leading-snug">{command.name}</h2>
+          <p className="text-[12px] text-slate-600 mt-1 font-mono">{command.path}</p>
+        </div>
+        <button
+          onClick={() => RevealInFinder(command.path)}
+          title="Reveal in Finder"
+          className="p-1.5 rounded-md transition-colors cursor-pointer text-slate-600 hover:text-slate-400 hover:bg-white/5 shrink-0 mt-0.5"
+        >
+          <FolderOpen className="size-3.5" />
+        </button>
       </div>
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-3 p-6">
         <div className="flex-1 min-h-0 rounded-xl overflow-hidden border border-white/5">

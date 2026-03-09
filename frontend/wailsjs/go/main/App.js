@@ -46,6 +46,10 @@ export function RemoveProject(arg1) {
   return window['go']['main']['App']['RemoveProject'](arg1);
 }
 
+export function RevealInFinder(arg1) {
+  return window['go']['main']['App']['RevealInFinder'](arg1);
+}
+
 export function SetPlanMeta(arg1, arg2) {
   return window['go']['main']['App']['SetPlanMeta'](arg1, arg2);
 }

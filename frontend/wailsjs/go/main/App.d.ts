@@ -30,6 +30,8 @@ export function PickProjectDir():Promise<string>;
 
 export function RemoveProject(arg1:string):Promise<void>;
 
+export function RevealInFinder(arg1:string):Promise<void>;
+
 export function SetPlanMeta(arg1:string,arg2:plans.PlanMeta):Promise<void>;
 
 export function SetPlanName(arg1:string,arg2:string):Promise<void>;
