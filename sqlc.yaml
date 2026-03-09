@@ -1,0 +1,10 @@
+version: "2"
+sql:
+  - engine: "sqlite"
+    queries: "backend/db/queries"
+    schema: "backend/db/migrations"
+    gen:
+      go:
+        package: "generated"
+        out: "backend/db/generated"
+        emit_empty_slices: true

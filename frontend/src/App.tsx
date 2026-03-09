@@ -239,7 +239,7 @@ function useUsageStats() {
   return { data, error }
 }
 
-function PageContent({ section, activeProject }: { section: string; activeProject: projects.Project | null }) {
+function PageContent({ section, activeProject, projectList }: { section: string; activeProject: projects.Project | null; projectList: projects.Project[] | null }) {
   const item = NAV_ITEMS.find(n => n.id === section)
   const { data: plansData, refresh: refreshPlans } = usePlans()
   const { data: sessionsData, refresh: refreshSessions } = useSessions()
@@ -262,7 +262,7 @@ function PageContent({ section, activeProject }: { section: string; activeProjec
       )}
 
       {section === 'plans' ? (
-        <PlansPage plans={plansData} onRefresh={refreshPlans} />
+        <PlansPage plans={plansData} onRefresh={refreshPlans} projects={projectList} />
       ) : section === 'sessions' ? (
         <SessionsPage sessions={sessionsData} onRefresh={refreshSessions} activeProject={activeProject} />
       ) : section === 'settings' ? (
@@ -305,7 +305,7 @@ export default function App() {
         onProjectChange={setProjectId}
         projectList={projectList}
       />
-      <PageContent section={activeSection} activeProject={activeProject} />
+      <PageContent section={activeSection} activeProject={activeProject} projectList={projectList} />
     </div>
   )
 }

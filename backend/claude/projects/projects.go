@@ -2,6 +2,7 @@ package projects
 
 import (
 	"bufio"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -9,6 +10,9 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
+
+	"claudepad/backend/db/generated"
 
 	"github.com/google/uuid"
 )
@@ -18,44 +22,45 @@ func encodeProjectPath(path string) string {
 	return strings.ReplaceAll(path, "/", "-")
 }
 
+func nullTimeStr(t sql.NullTime) string {
+	if !t.Valid {
+		return ""
+	}
+	return t.Time.UTC().Format(time.RFC3339)
+}
+
+func toProject(p generated.Project) Project {
+	return Project{
+		ID:          p.ID,
+		Name:        p.Name.String,
+		RealPath:    p.RealPath,
+		IsGlobal:    p.IsGlobal.Int64 != 0,
+		EncodedName: encodeProjectPath(p.RealPath),
+		LastOpened:  nullTimeStr(p.LastOpened),
+		CreatedAt:   nullTimeStr(p.CreatedAt),
+	}
+}
+
 // ReadProjects returns all projects from the DB, ensuring the global row exists.
 // Global is always first; remainder sorted by last_opened DESC.
-func ReadProjects(db *sql.DB, claudeDir string) ([]Project, error) {
-	globalPath := claudeDir
-	if err := ensureGlobal(db, globalPath); err != nil {
+func ReadProjects(q *generated.Queries, claudeDir string) ([]Project, error) {
+	ctx := context.Background()
+	if err := ensureGlobal(q, claudeDir); err != nil {
 		return nil, err
 	}
-
-	rows, err := db.Query(`
-		SELECT id, name, real_path, is_global, last_opened, created_at
-		FROM projects
-		ORDER BY is_global DESC, last_opened DESC`)
+	rows, err := q.ListProjects(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-
-	var out []Project
-	for rows.Next() {
-		var p Project
-		var lastOpened, createdAt sql.NullString
-		if err := rows.Scan(&p.ID, &p.Name, &p.RealPath, &p.IsGlobal, &lastOpened, &createdAt); err != nil {
-			return nil, err
-		}
-		p.EncodedName = encodeProjectPath(p.RealPath)
-		if lastOpened.Valid {
-			p.LastOpened = lastOpened.String
-		}
-		if createdAt.Valid {
-			p.CreatedAt = createdAt.String
-		}
-		out = append(out, p)
+	out := make([]Project, len(rows))
+	for i, p := range rows {
+		out[i] = toProject(p)
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // DiscoverProjects scans ~/.claude/projects/ and returns entries not yet in DB.
-func DiscoverProjects(db *sql.DB, claudeDir string) ([]Project, error) {
+func DiscoverProjects(q *generated.Queries, claudeDir string) ([]Project, error) {
 	projectsDir := filepath.Join(claudeDir, "projects")
 	entries, err := os.ReadDir(projectsDir)
 	if err != nil {
@@ -65,10 +70,13 @@ func DiscoverProjects(db *sql.DB, claudeDir string) ([]Project, error) {
 		return nil, err
 	}
 
-	// Collect already-known paths.
-	known, err := knownPaths(db)
+	paths, err := q.ListProjectPaths(context.Background())
 	if err != nil {
 		return nil, err
+	}
+	known := make(map[string]struct{}, len(paths))
+	for _, p := range paths {
+		known[p] = struct{}{}
 	}
 
 	var out []Project
@@ -81,106 +89,64 @@ func DiscoverProjects(db *sql.DB, claudeDir string) ([]Project, error) {
 		if _, ok := known[realPath]; ok {
 			continue
 		}
-		p := Project{
+		out = append(out, Project{
 			Name:        filepath.Base(realPath),
 			RealPath:    realPath,
 			EncodedName: encoded,
-		}
-		out = append(out, p)
+		})
 	}
-
 	sort.Slice(out, func(i, j int) bool { return out[i].RealPath < out[j].RealPath })
 	return out, nil
 }
 
 // AddProject inserts a new project row and returns it.
-func AddProject(db *sql.DB, path string) (Project, error) {
+func AddProject(q *generated.Queries, path string) (Project, error) {
 	if _, err := os.Stat(path); err != nil {
 		return Project{}, errors.New("path does not exist: " + path)
 	}
-
-	id := uuid.NewString()
+	ctx := context.Background()
 	name := filepath.Base(path)
-	_, err := db.Exec(`
-		INSERT INTO projects (id, name, real_path, is_global, last_opened)
-		VALUES (?, ?, ?, 0, datetime('now'))
-		ON CONFLICT(real_path) DO NOTHING`,
-		id, name, path)
+	if err := q.InsertProject(ctx, generated.InsertProjectParams{
+		ID:       uuid.NewString(),
+		Name:     sql.NullString{String: name, Valid: true},
+		RealPath: path,
+	}); err != nil {
+		return Project{}, err
+	}
+	p, err := q.GetProjectByRealPath(ctx, path)
 	if err != nil {
 		return Project{}, err
 	}
-
-	// Read back (handles ON CONFLICT case where the row already existed).
-	var p Project
-	var lastOpened, createdAt sql.NullString
-	err = db.QueryRow(`
-		SELECT id, name, real_path, is_global, last_opened, created_at
-		FROM projects WHERE real_path = ?`, path).
-		Scan(&p.ID, &p.Name, &p.RealPath, &p.IsGlobal, &lastOpened, &createdAt)
-	if err != nil {
-		return Project{}, err
-	}
-	p.EncodedName = encodeProjectPath(p.RealPath)
-	if lastOpened.Valid {
-		p.LastOpened = lastOpened.String
-	}
-	if createdAt.Valid {
-		p.CreatedAt = createdAt.String
-	}
-	return p, nil
+	return toProject(p), nil
 }
 
 // RemoveProject deletes a project by ID. Returns an error if it is the global project.
-func RemoveProject(db *sql.DB, id string) error {
-	var isGlobal bool
-	err := db.QueryRow(`SELECT is_global FROM projects WHERE id = ?`, id).Scan(&isGlobal)
+func RemoveProject(q *generated.Queries, id string) error {
+	ctx := context.Background()
+	p, err := q.GetProjectByID(ctx, id)
 	if err != nil {
 		return err
 	}
-	if isGlobal {
+	if p.IsGlobal.Int64 != 0 {
 		return errors.New("cannot remove the global project")
 	}
-	_, err = db.Exec(`DELETE FROM projects WHERE id = ?`, id)
-	return err
+	return q.DeleteProject(ctx, id)
 }
 
 // UpdateLastOpened sets last_opened to now for the given project.
-func UpdateLastOpened(db *sql.DB, id string) error {
-	_, err := db.Exec(`UPDATE projects SET last_opened = datetime('now') WHERE id = ?`, id)
-	return err
+func UpdateLastOpened(q *generated.Queries, id string) error {
+	return q.UpdateProjectLastOpened(context.Background(), id)
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-func ensureGlobal(db *sql.DB, claudeDir string) error {
-	id := uuid.NewString()
-	_, err := db.Exec(`
-		INSERT INTO projects (id, name, real_path, is_global, last_opened)
-		VALUES (?, 'Global', ?, 1, datetime('now'))
-		ON CONFLICT(real_path) DO NOTHING`,
-		id, claudeDir)
-	return err
+func ensureGlobal(q *generated.Queries, claudeDir string) error {
+	return q.UpsertGlobalProject(context.Background(), generated.UpsertGlobalProjectParams{
+		ID:       uuid.NewString(),
+		RealPath: claudeDir,
+	})
 }
 
-func knownPaths(db *sql.DB) (map[string]struct{}, error) {
-	rows, err := db.Query(`SELECT real_path FROM projects`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	m := map[string]struct{}{}
-	for rows.Next() {
-		var p string
-		if err := rows.Scan(&p); err != nil {
-			return nil, err
-		}
-		m[p] = struct{}{}
-	}
-	return m, rows.Err()
-}
-
-// resolveRealPath tries to read cwd from the first .jsonl file; falls back to
-// decoding the directory name by replacing "-" with "/".
 func resolveRealPath(dir, encoded string) string {
 	entries, err := os.ReadDir(dir)
 	if err == nil {
@@ -194,7 +160,6 @@ func resolveRealPath(dir, encoded string) string {
 			break
 		}
 	}
-	// Fallback: encoded name starts with "-" representing leading "/".
 	decoded := strings.ReplaceAll(encoded, "-", "/")
 	if !strings.HasPrefix(decoded, "/") {
 		decoded = "/" + decoded

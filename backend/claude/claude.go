@@ -25,6 +25,7 @@ type Project = projects.Project
 type SettingsFile = settings.SettingsFile
 type Skill = skills.Skill
 type Command = commands.Command
+type PlanMeta = plans.PlanMeta
 
 // Client provides access to Claude Code's local data files.
 // It owns the file watcher and all path resolution — callers never touch paths directly.
@@ -63,12 +64,13 @@ func (c *Client) Start(_ context.Context, emit func(event string)) error {
 	// Auto-discover projects from disk on startup (best-effort).
 	go func() {
 		claudeDir := filepath.Join(home, ".claude")
-		discovered, err := projects.DiscoverProjects(c.db.Conn(), claudeDir)
+		q := c.db.Queries()
+		discovered, err := projects.DiscoverProjects(q, claudeDir)
 		if err != nil {
 			return
 		}
 		for _, p := range discovered {
-			_, _ = projects.AddProject(c.db.Conn(), p.RealPath)
+			_, _ = projects.AddProject(q, p.RealPath)
 		}
 		if len(discovered) > 0 {
 			emit("projects:updated")
@@ -147,7 +149,15 @@ func (c *Client) GetUsageStats() (*StatsCache, error) {
 }
 
 func (c *Client) GetPlans() ([]Plan, error) {
-	return plans.ReadPlans()
+	return plans.ReadPlans(c.db.Queries())
+}
+
+func (c *Client) SetPlanName(path, name string) error {
+	return plans.SetPlanName(c.db.Queries(), path, name)
+}
+
+func (c *Client) SetPlanMeta(path string, meta PlanMeta) error {
+	return plans.SetPlanMeta(c.db.Queries(), path, meta)
 }
 
 func (c *Client) GetSessions() ([]Session, error) {
@@ -171,7 +181,7 @@ func (c *Client) GetProjects() ([]Project, error) {
 	if err != nil {
 		return nil, err
 	}
-	return projects.ReadProjects(c.db.Conn(), dir)
+	return projects.ReadProjects(c.db.Queries(), dir)
 }
 
 func (c *Client) DiscoverProjects() ([]Project, error) {
@@ -179,19 +189,19 @@ func (c *Client) DiscoverProjects() ([]Project, error) {
 	if err != nil {
 		return nil, err
 	}
-	return projects.DiscoverProjects(c.db.Conn(), dir)
+	return projects.DiscoverProjects(c.db.Queries(), dir)
 }
 
 func (c *Client) AddProject(path string) (Project, error) {
-	return projects.AddProject(c.db.Conn(), path)
+	return projects.AddProject(c.db.Queries(), path)
 }
 
 func (c *Client) RemoveProject(id string) error {
-	return projects.RemoveProject(c.db.Conn(), id)
+	return projects.RemoveProject(c.db.Queries(), id)
 }
 
 func (c *Client) SetProjectLastOpened(id string) error {
-	return projects.UpdateLastOpened(c.db.Conn(), id)
+	return projects.UpdateLastOpened(c.db.Queries(), id)
 }
 
 func (c *Client) GetSettings(projectPath string) ([]SettingsFile, error) {

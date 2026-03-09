@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"claudepad/backend/db/generated"
+
 	"github.com/pressly/goose/v3"
 	_ "modernc.org/sqlite"
 )
@@ -58,3 +60,6 @@ func (d *DB) Close() error {
 
 // Conn returns the underlying *sql.DB for direct use by domain packages.
 func (d *DB) Conn() *sql.DB { return d.conn }
+
+// Queries returns a sqlc-generated query handle backed by the DB connection.
+func (d *DB) Queries() *generated.Queries { return generated.New(d.conn) }

@@ -32,10 +32,17 @@ export namespace plans {
 	export class Plan {
 	    path: string;
 	    filename: string;
+	    name: string;
 	    content: string;
 	    todoTotal: number;
 	    todoDone: number;
 	    modifiedAt: string;
+	    wordCount: number;
+	    pinned: boolean;
+	    projectId: string;
+	    tags: string[];
+	    notes: string;
+	    archived: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Plan(source);
@@ -45,10 +52,37 @@ export namespace plans {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.path = source["path"];
 	        this.filename = source["filename"];
+	        this.name = source["name"];
 	        this.content = source["content"];
 	        this.todoTotal = source["todoTotal"];
 	        this.todoDone = source["todoDone"];
 	        this.modifiedAt = source["modifiedAt"];
+	        this.wordCount = source["wordCount"];
+	        this.pinned = source["pinned"];
+	        this.projectId = source["projectId"];
+	        this.tags = source["tags"];
+	        this.notes = source["notes"];
+	        this.archived = source["archived"];
+	    }
+	}
+	export class PlanMeta {
+	    pinned: boolean;
+	    projectId: string;
+	    tags: string[];
+	    notes: string;
+	    archived: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PlanMeta(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.pinned = source["pinned"];
+	        this.projectId = source["projectId"];
+	        this.tags = source["tags"];
+	        this.notes = source["notes"];
+	        this.archived = source["archived"];
 	    }
 	}
 

@@ -113,3 +113,14 @@ func (a *App) GetCommands(projectPath string) ([]claude.Command, error) {
 func (a *App) UpdateCommand(path, content string) error {
 	return a.claude.UpdateCommand(path, content)
 }
+
+// SetPlanName stores a friendly display name for a plan. Pass empty string to clear.
+func (a *App) SetPlanName(path, name string) error {
+	return a.claude.SetPlanName(path, name)
+}
+
+// SetPlanMeta stores metadata for a plan (pin, priority, due date, project, tags, notes, archived).
+// Call SetPlanName separately to change the friendly display name.
+func (a *App) SetPlanMeta(path string, meta claude.PlanMeta) error {
+	return a.claude.SetPlanMeta(path, meta)
+}

@@ -46,6 +46,14 @@ export function RemoveProject(arg1) {
   return window['go']['main']['App']['RemoveProject'](arg1);
 }
 
+export function SetPlanMeta(arg1, arg2) {
+  return window['go']['main']['App']['SetPlanMeta'](arg1, arg2);
+}
+
+export function SetPlanName(arg1, arg2) {
+  return window['go']['main']['App']['SetPlanName'](arg1, arg2);
+}
+
 export function SetProjectLastOpened(arg1) {
   return window['go']['main']['App']['SetProjectLastOpened'](arg1);
 }

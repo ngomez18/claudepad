@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"claudepad/backend/db/generated"
+
 	_ "modernc.org/sqlite"
 )
 
@@ -113,9 +115,10 @@ func TestResolveRealPath_Fallback(t *testing.T) {
 
 func TestReadProjects_CreatesGlobalRow(t *testing.T) {
 	db := openTestDB(t)
+	q := generated.New(db)
 	claudeDir := t.TempDir()
 
-	projects, err := ReadProjects(db, claudeDir)
+	projects, err := ReadProjects(q, claudeDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -136,13 +139,14 @@ func TestReadProjects_CreatesGlobalRow(t *testing.T) {
 
 func TestReadProjects_GlobalIdempotent(t *testing.T) {
 	db := openTestDB(t)
+	q := generated.New(db)
 	claudeDir := t.TempDir()
 
 	// Call twice — should not duplicate the global row.
-	if _, err := ReadProjects(db, claudeDir); err != nil {
+	if _, err := ReadProjects(q, claudeDir); err != nil {
 		t.Fatalf("first call error: %v", err)
 	}
-	projects, err := ReadProjects(db, claudeDir)
+	projects, err := ReadProjects(q, claudeDir)
 	if err != nil {
 		t.Fatalf("second call error: %v", err)
 	}
@@ -153,15 +157,16 @@ func TestReadProjects_GlobalIdempotent(t *testing.T) {
 
 func TestReadProjects_GlobalFirst(t *testing.T) {
 	db := openTestDB(t)
+	q := generated.New(db)
 	claudeDir := t.TempDir()
 
 	// Add a non-global project first.
 	p := t.TempDir()
-	if _, err := AddProject(db, p); err != nil {
+	if _, err := AddProject(q, p); err != nil {
 		t.Fatalf("AddProject: %v", err)
 	}
 
-	projects, err := ReadProjects(db, claudeDir)
+	projects, err := ReadProjects(q, claudeDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -175,9 +180,10 @@ func TestReadProjects_GlobalFirst(t *testing.T) {
 
 func TestReadProjects_EncodedNameDerived(t *testing.T) {
 	db := openTestDB(t)
+	q := generated.New(db)
 	claudeDir := t.TempDir()
 
-	projects, err := ReadProjects(db, claudeDir)
+	projects, err := ReadProjects(q, claudeDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -192,10 +198,11 @@ func TestReadProjects_EncodedNameDerived(t *testing.T) {
 
 func TestDiscoverProjects_Empty(t *testing.T) {
 	db := openTestDB(t)
+	q := generated.New(db)
 	claudeDir := t.TempDir()
 	os.Mkdir(filepath.Join(claudeDir, "projects"), 0o700)
 
-	got, err := DiscoverProjects(db, claudeDir)
+	got, err := DiscoverProjects(q, claudeDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -206,9 +213,10 @@ func TestDiscoverProjects_Empty(t *testing.T) {
 
 func TestDiscoverProjects_NoDirIsOk(t *testing.T) {
 	db := openTestDB(t)
+	q := generated.New(db)
 	claudeDir := t.TempDir() // no "projects" subdir
 
-	got, err := DiscoverProjects(db, claudeDir)
+	got, err := DiscoverProjects(q, claudeDir)
 	if err != nil {
 		t.Fatalf("expected no error for missing projects dir, got: %v", err)
 	}
@@ -219,6 +227,7 @@ func TestDiscoverProjects_NoDirIsOk(t *testing.T) {
 
 func TestDiscoverProjects_ReturnsUnknown(t *testing.T) {
 	db := openTestDB(t)
+	q := generated.New(db)
 	claudeDir := t.TempDir()
 	projectsDir := filepath.Join(claudeDir, "projects")
 	os.Mkdir(projectsDir, 0o700)
@@ -229,7 +238,7 @@ func TestDiscoverProjects_ReturnsUnknown(t *testing.T) {
 	os.Mkdir(projDir, 0o700)
 	writeJSONL(t, projDir, "sess.jsonl", `{"cwd":"/Users/alice/code/myapp"}`+"\n")
 
-	got, err := DiscoverProjects(db, claudeDir)
+	got, err := DiscoverProjects(q, claudeDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -243,6 +252,7 @@ func TestDiscoverProjects_ReturnsUnknown(t *testing.T) {
 
 func TestDiscoverProjects_SkipsKnown(t *testing.T) {
 	db := openTestDB(t)
+	q := generated.New(db)
 	claudeDir := t.TempDir()
 	projectsDir := filepath.Join(claudeDir, "projects")
 	os.Mkdir(projectsDir, 0o700)
@@ -254,11 +264,11 @@ func TestDiscoverProjects_SkipsKnown(t *testing.T) {
 	writeJSONL(t, projDir, "sess.jsonl", `{"cwd":"`+realPath+`"}`+"\n")
 
 	// Pre-register so it's known.
-	if _, err := AddProject(db, realPath); err != nil {
+	if _, err := AddProject(q, realPath); err != nil {
 		t.Fatalf("AddProject: %v", err)
 	}
 
-	got, err := DiscoverProjects(db, claudeDir)
+	got, err := DiscoverProjects(q, claudeDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -271,9 +281,10 @@ func TestDiscoverProjects_SkipsKnown(t *testing.T) {
 
 func TestAddProject_Success(t *testing.T) {
 	db := openTestDB(t)
+	q := generated.New(db)
 	realPath := t.TempDir()
 
-	p, err := AddProject(db, realPath)
+	p, err := AddProject(q, realPath)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -293,7 +304,8 @@ func TestAddProject_Success(t *testing.T) {
 
 func TestAddProject_NonExistentPath(t *testing.T) {
 	db := openTestDB(t)
-	_, err := AddProject(db, "/nonexistent/path/that/does/not/exist")
+	q := generated.New(db)
+	_, err := AddProject(q, "/nonexistent/path/that/does/not/exist")
 	if err == nil {
 		t.Error("expected error for non-existent path")
 	}
@@ -301,13 +313,14 @@ func TestAddProject_NonExistentPath(t *testing.T) {
 
 func TestAddProject_Idempotent(t *testing.T) {
 	db := openTestDB(t)
+	q := generated.New(db)
 	realPath := t.TempDir()
 
-	p1, err := AddProject(db, realPath)
+	p1, err := AddProject(q, realPath)
 	if err != nil {
 		t.Fatalf("first AddProject: %v", err)
 	}
-	p2, err := AddProject(db, realPath)
+	p2, err := AddProject(q, realPath)
 	if err != nil {
 		t.Fatalf("second AddProject: %v", err)
 	}
@@ -320,13 +333,14 @@ func TestAddProject_Idempotent(t *testing.T) {
 
 func TestRemoveProject_Success(t *testing.T) {
 	db := openTestDB(t)
+	q := generated.New(db)
 	realPath := t.TempDir()
 
-	p, err := AddProject(db, realPath)
+	p, err := AddProject(q, realPath)
 	if err != nil {
 		t.Fatalf("AddProject: %v", err)
 	}
-	if err := RemoveProject(db, p.ID); err != nil {
+	if err := RemoveProject(q, p.ID); err != nil {
 		t.Fatalf("RemoveProject: %v", err)
 	}
 
@@ -340,15 +354,16 @@ func TestRemoveProject_Success(t *testing.T) {
 
 func TestRemoveProject_RefusesGlobal(t *testing.T) {
 	db := openTestDB(t)
+	q := generated.New(db)
 	claudeDir := t.TempDir()
 
-	projects, err := ReadProjects(db, claudeDir)
+	projects, err := ReadProjects(q, claudeDir)
 	if err != nil {
 		t.Fatalf("ReadProjects: %v", err)
 	}
 	globalID := projects[0].ID
 
-	if err := RemoveProject(db, globalID); err == nil {
+	if err := RemoveProject(q, globalID); err == nil {
 		t.Error("expected error when removing global project")
 	}
 }
@@ -357,13 +372,14 @@ func TestRemoveProject_RefusesGlobal(t *testing.T) {
 
 func TestUpdateLastOpened(t *testing.T) {
 	db := openTestDB(t)
+	q := generated.New(db)
 	realPath := t.TempDir()
 
-	p, err := AddProject(db, realPath)
+	p, err := AddProject(q, realPath)
 	if err != nil {
 		t.Fatalf("AddProject: %v", err)
 	}
-	if err := UpdateLastOpened(db, p.ID); err != nil {
+	if err := UpdateLastOpened(q, p.ID); err != nil {
 		t.Fatalf("UpdateLastOpened: %v", err)
 	}
 

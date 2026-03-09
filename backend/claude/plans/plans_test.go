@@ -1,10 +1,15 @@
 package plans
 
 import (
+	"database/sql"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"claudepad/backend/db/generated"
+
+	_ "modernc.org/sqlite"
 )
 
 func writePlan(t *testing.T, dir, name, content string) {
@@ -12,6 +17,32 @@ func writePlan(t *testing.T, dir, name, content string) {
 	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o600); err != nil {
 		t.Fatalf("write plan: %v", err)
 	}
+}
+
+func openTestQueries(t *testing.T) *generated.Queries {
+	t.Helper()
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	_, err = db.Exec(`CREATE TABLE file_metadata (
+		id            TEXT PRIMARY KEY,
+		real_path     TEXT NOT NULL UNIQUE,
+		file_type     TEXT NOT NULL,
+		friendly_name TEXT,
+		tags          TEXT NOT NULL DEFAULT '[]',
+		notes         TEXT NOT NULL DEFAULT '',
+		archived      INTEGER NOT NULL DEFAULT 0,
+		pinned        INTEGER NOT NULL DEFAULT 0,
+		project_id    TEXT    NOT NULL DEFAULT '',
+		created_at    DATETIME DEFAULT (datetime('now')),
+		updated_at    DATETIME DEFAULT (datetime('now'))
+	)`)
+	if err != nil {
+		t.Fatalf("create table: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+	return generated.New(db)
 }
 
 func TestReadPlansFrom_Empty(t *testing.T) {
@@ -115,5 +146,143 @@ func TestReadPlansFrom_SortedNewestFirst(t *testing.T) {
 	}
 	if plans[0].Filename != "newer" {
 		t.Errorf("expected newest first, got %q", plans[0].Filename)
+	}
+}
+
+func TestSetAndGetPlanName(t *testing.T) {
+	dir := t.TempDir()
+	writePlan(t, dir, "my-plan.md", "# My Plan\n")
+	q := openTestQueries(t)
+	planPath := filepath.Join(dir, "my-plan.md")
+
+	// Before setting name: Name should be empty
+	plans, err := readPlansFrom(dir)
+	if err != nil {
+		t.Fatalf("readPlansFrom: %v", err)
+	}
+	if plans[0].Name != "" {
+		t.Errorf("expected empty Name before set, got %q", plans[0].Name)
+	}
+
+	// Set friendly name
+	if err := SetPlanName(q, planPath, "My Friendly Name"); err != nil {
+		t.Fatalf("SetPlanName: %v", err)
+	}
+
+	// Verify via enrichment
+	planList, _ := readPlansFrom(dir)
+	enrichPlansFromDB(q, planList)
+	if planList[0].Name != "My Friendly Name" {
+		t.Errorf("expected Name %q, got %q", "My Friendly Name", planList[0].Name)
+	}
+
+	// Upsert with a new name
+	if err := SetPlanName(q, planPath, "Updated Name"); err != nil {
+		t.Fatalf("SetPlanName upsert: %v", err)
+	}
+	planList2, _ := readPlansFrom(dir)
+	enrichPlansFromDB(q, planList2)
+	if planList2[0].Name != "Updated Name" {
+		t.Errorf("expected upserted name %q, got %q", "Updated Name", planList2[0].Name)
+	}
+
+	// Clear the name
+	if err := SetPlanName(q, planPath, ""); err != nil {
+		t.Fatalf("SetPlanName clear: %v", err)
+	}
+	planList3, _ := readPlansFrom(dir)
+	enrichPlansFromDB(q, planList3)
+	if planList3[0].Name != "" {
+		t.Errorf("expected empty Name after clear, got %q", planList3[0].Name)
+	}
+}
+
+func TestSetPlanMeta_RoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	writePlan(t, dir, "meta-plan.md", "# Plan\n\nSome words here.\n")
+	q := openTestQueries(t)
+	planPath := filepath.Join(dir, "meta-plan.md")
+
+	meta := PlanMeta{
+		Pinned:    true,
+		ProjectID: "proj-abc",
+		Tags:      []string{"feature", "backend"},
+		Notes:     "Important notes",
+		Archived:  false,
+	}
+
+	if err := SetPlanMeta(q, planPath, meta); err != nil {
+		t.Fatalf("SetPlanMeta: %v", err)
+	}
+
+	plans, _ := readPlansFrom(dir)
+	enrichPlansFromDB(q, plans)
+	p := plans[0]
+
+	if !p.Pinned {
+		t.Error("expected Pinned=true")
+	}
+	if p.ProjectID != "proj-abc" {
+		t.Errorf("ProjectID: got %q, want %q", p.ProjectID, "proj-abc")
+	}
+	if len(p.Tags) != 2 || p.Tags[0] != "feature" || p.Tags[1] != "backend" {
+		t.Errorf("Tags: got %v", p.Tags)
+	}
+	if p.Notes != "Important notes" {
+		t.Errorf("Notes: got %q", p.Notes)
+	}
+	if p.Archived {
+		t.Error("expected Archived=false")
+	}
+}
+
+func TestSetPlanMeta_DoesNotClobberName(t *testing.T) {
+	dir := t.TempDir()
+	writePlan(t, dir, "plan.md", "# Plan\n")
+	q := openTestQueries(t)
+	planPath := filepath.Join(dir, "plan.md")
+
+	// Set name first
+	if err := SetPlanName(q, planPath, "Keep This Name"); err != nil {
+		t.Fatalf("SetPlanName: %v", err)
+	}
+
+	// Set meta (should not touch friendly_name)
+	if err := SetPlanMeta(q, planPath, PlanMeta{Tags: []string{"x"}}); err != nil {
+		t.Fatalf("SetPlanMeta: %v", err)
+	}
+
+	plans, _ := readPlansFrom(dir)
+	enrichPlansFromDB(q, plans)
+	if plans[0].Name != "Keep This Name" {
+		t.Errorf("SetPlanMeta clobbered Name: got %q", plans[0].Name)
+	}
+}
+
+func TestReadPlans_PinnedFirst(t *testing.T) {
+	dir := t.TempDir()
+	q := openTestQueries(t)
+
+	now := time.Now()
+	for _, name := range []string{"a.md", "b.md", "c.md"} {
+		p := filepath.Join(dir, name)
+		os.WriteFile(p, []byte("# "+name), 0o600)
+		os.Chtimes(p, now, now)
+	}
+
+	pathB := filepath.Join(dir, "b.md")
+	SetPlanMeta(q, pathB, PlanMeta{Pinned: true})
+
+	plans, _ := readPlansFrom(dir)
+	enrichPlansFromDB(q, plans)
+
+	// Verify b is marked pinned; sort is applied by ReadPlans (not testable here directly)
+	for _, p := range plans {
+		if p.Filename == "b" && !p.Pinned {
+			t.Errorf("plan b should be pinned")
+		}
+		if p.Filename != "b" && p.Pinned {
+			t.Errorf("plan %q should not be pinned", p.Filename)
+		}
 	}
 }
