@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -138,9 +139,12 @@ func parseSessionFile(path string) (Session, error) {
 		if line.Type == "user" && line.Message != nil {
 			var text string
 			if err := json.Unmarshal(line.Message.Content, &text); err == nil {
-				s.MessageCount++
-				if s.Snippet == "" {
-					s.Snippet = truncate(text, 120)
+				text = cleanUserText(text)
+				if text != "" {
+					s.MessageCount++
+					if s.Snippet == "" {
+						s.Snippet = truncate(text, 120)
+					}
 				}
 			}
 		}
@@ -195,13 +199,18 @@ func parseTranscript(r io.Reader) ([]TranscriptMessage, error) {
 
 		switch line.Type {
 		case "user":
+			// Content is either a plain string (human prompt) or an array
+			// (tool_result blocks). Only show human prompts; skip tool results.
 			var text string
 			if err := json.Unmarshal(line.Message.Content, &text); err == nil {
-				msgs = append(msgs, TranscriptMessage{
-					Role:      "user",
-					Text:      text,
-					Timestamp: line.Timestamp,
-				})
+				text = cleanUserText(text)
+				if text != "" {
+					msgs = append(msgs, TranscriptMessage{
+						Role:      "user",
+						Text:      text,
+						Timestamp: line.Timestamp,
+					})
+				}
 			}
 
 		case "assistant":
@@ -236,6 +245,18 @@ func parseTranscript(r io.Reader) ([]TranscriptMessage, error) {
 	}
 
 	return msgs, scanner.Err()
+}
+
+// systemTagRE matches XML-like tags that Claude Code injects into user messages
+// (slash command metadata, caveats, local stdout). These are not user content.
+var systemTagRE = regexp.MustCompile(
+	`(?s)<(?:local-command-caveat|command-name|command-message|command-args|local-command-stdout)[^>]*>.*?</(?:local-command-caveat|command-name|command-message|command-args|local-command-stdout)>`,
+)
+
+// cleanUserText strips system-injected XML tags and trims whitespace.
+// Returns empty string if nothing meaningful remains.
+func cleanUserText(text string) string {
+	return strings.TrimSpace(systemTagRE.ReplaceAllString(text, ""))
 }
 
 func truncate(s string, maxLen int) string {

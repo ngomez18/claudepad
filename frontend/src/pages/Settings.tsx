@@ -1,30 +1,12 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { FolderOpen } from 'lucide-react'
 import CodeMirror from '@uiw/react-codemirror'
 import { json } from '@codemirror/lang-json'
 import { oneDark } from '@codemirror/theme-one-dark'
-import { GetSettings, UpdateSettings, EventsOn, RevealInFinder } from '@/lib/api'
+import { UpdateSettings, RevealInFinder } from '@/lib/api'
+import { useSettings } from '@/hooks/useSettings'
 import type { settings } from '../../wailsjs/go/models'
 import type { projects } from '../../wailsjs/go/models'
-
-// ── Hook ──────────────────────────────────────────────────────────────────────
-
-function useSettings(projectPath: string) {
-  const [data, setData] = useState<settings.SettingsFile[] | null>(null)
-
-  const reload = useCallback(
-    () => GetSettings(projectPath).then(setData).catch(() => setData([])),
-    [projectPath]
-  )
-
-  useEffect(() => {
-    reload()
-    const off = EventsOn('settings:updated', reload)
-    return off
-  }, [reload])
-
-  return { data, reload }
-}
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 

@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Layers, MessageSquare, Zap, Bot, BarChart3 } from 'lucide-react'
+import { useUsageStats } from '@/hooks/useUsageStats'
 import type { usage } from '../../wailsjs/go/models'
 
 export type StatsCache = usage.StatsCache
@@ -277,7 +278,11 @@ function EmptyState() {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function UsagePage({ data }: { data: StatsCache | null }) {
+export default function UsagePage() {
+  const { data, isLoading, isError } = useUsageStats()
+
+  if (isLoading) return <EmptyState />
+  if (isError) return <p className="text-sm text-red-400/70">Failed to load usage stats</p>
   if (!data) return <EmptyState />
 
   const totalTokens = Object.values(data.modelUsage).reduce(

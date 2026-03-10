@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
+import MarkdownView from '@/components/MarkdownView'
 import { MessageSquare, RotateCcw, GitBranch, Clock, Hash, Wrench } from 'lucide-react'
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels'
-import { GetSessionTranscript } from '@/lib/api'
+import { useSessions } from '@/hooks/useSessions'
+import { useTranscript } from '@/hooks/useTranscript'
 import { relativeTime } from '@/lib/utils'
 import type { sessions, projects } from '../../wailsjs/go/models'
 
@@ -54,6 +56,13 @@ function SessionRow({
       }`}>
         {sessionLabel(session)}
       </div>
+
+      {/* Snippet (shown only when slug is the primary label and snippet exists) */}
+      {!!session.slug && !!session.snippet && (
+        <div className="text-[12px] text-slate-500 leading-snug truncate mb-1">
+          {session.snippet}
+        </div>
+      )}
 
       {/* Meta row */}
       <div className="flex items-center gap-2 flex-wrap">
@@ -155,18 +164,19 @@ function TranscriptView({
 
 function MessageBubble({ msg }: { msg: sessions.TranscriptMessage }) {
   const isUser = msg.role === 'user'
+  const time = msg.timestamp ? relativeTime(msg.timestamp) : null
 
   return (
     <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} gap-1 max-w-[85%] ${isUser ? 'self-end' : 'self-start'}`}>
       {isUser ? (
-        <div className="bg-white/5 rounded-xl rounded-tr-sm px-3.5 py-2.5 text-[14px] text-slate-200 leading-relaxed whitespace-pre-wrap break-words">
-          {msg.text}
+        <div className="bg-white/5 rounded-xl rounded-tr-sm px-3.5 py-2.5 break-words">
+          <MarkdownView content={msg.text} />
         </div>
       ) : (
         <>
           {msg.text && (
-            <div className="text-[14px] text-slate-300 leading-relaxed whitespace-pre-wrap break-words px-1">
-              {msg.text}
+            <div className="px-1 w-full">
+              <MarkdownView content={msg.text} />
             </div>
           )}
           {msg.tools && msg.tools.length > 0 && (
@@ -183,6 +193,9 @@ function MessageBubble({ msg }: { msg: sessions.TranscriptMessage }) {
             </div>
           )}
         </>
+      )}
+      {time && (
+        <span className="text-[11px] text-slate-700 px-1">{time}</span>
       )}
     </div>
   )
@@ -218,17 +231,12 @@ function EmptyList({ loading }: { loading: boolean }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SessionsPage({
-  sessions: sessionList,
-  onRefresh,
   activeProject,
 }: {
-  sessions: sessions.Session[] | null
-  onRefresh: () => void
   activeProject: projects.Project | null
 }) {
+  const { data: sessionList, isLoading, refetch } = useSessions()
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [transcript, setTranscript] = useState<sessions.TranscriptMessage[] | null>(null)
-  const [loadingTranscript, setLoadingTranscript] = useState(false)
   const [filter, setFilter] = useState('')
 
   // When project changes, clear selected session.
@@ -241,15 +249,14 @@ export default function SessionsPage({
 
   const selected = projectFiltered?.find(s => s.sessionId === selectedId) ?? null
 
+  const { data: transcript, isLoading: loadingTranscript } = useTranscript(
+    selected?.projectPath ?? '',
+    selectedId
+  )
+
   function handleSelect(session: sessions.Session) {
     if (session.sessionId === selectedId) return
     setSelectedId(session.sessionId)
-    setTranscript(null)
-    setLoadingTranscript(true)
-    GetSessionTranscript(session.projectPath, session.sessionId)
-      .then(setTranscript)
-      .catch(() => setTranscript([]))
-      .finally(() => setLoadingTranscript(false))
   }
 
   const filterLower = filter.toLowerCase()
@@ -272,7 +279,7 @@ export default function SessionsPage({
             Sessions
           </span>
           <button
-            onClick={onRefresh}
+            onClick={() => refetch()}
             className="text-slate-600 hover:text-slate-400 transition-colors cursor-pointer"
             title="Refresh"
           >
@@ -294,7 +301,7 @@ export default function SessionsPage({
         {/* List */}
         <div className="flex-1 overflow-y-auto">
           {!filtered || filtered.length === 0 ? (
-            <EmptyList loading={projectFiltered === null} />
+            <EmptyList loading={isLoading} />
           ) : (
             filtered.map(session => (
               <SessionRow
@@ -317,7 +324,7 @@ export default function SessionsPage({
         {selected ? (
           <TranscriptView
             session={selected}
-            transcript={transcript}
+            transcript={transcript ?? null}
             loading={loadingTranscript}
           />
         ) : (

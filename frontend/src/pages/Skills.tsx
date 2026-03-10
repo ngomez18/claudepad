@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { Brain, RotateCcw, FolderOpen } from 'lucide-react'
+import { Brain, RotateCcw, FolderOpen, Eye, Code2 } from 'lucide-react'
+import MarkdownView from '@/components/MarkdownView'
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels'
 import { RevealInFinder } from '@/lib/api'
+import { useSkills } from '@/hooks/useSkills'
 import { relativeTime } from '@/lib/utils'
-import type { skills } from '../../wailsjs/go/models'
+import type { skills, projects } from '../../wailsjs/go/models'
 
 // ── List row ──────────────────────────────────────────────────────────────────
 
@@ -53,6 +55,8 @@ function SkillRow({
 // ── Detail panel ──────────────────────────────────────────────────────────────
 
 function SkillDetail({ skill }: { skill: skills.Skill }) {
+  const [viewMode, setViewMode] = useState<'rendered' | 'raw'>('rendered')
+
   return (
     <div className="flex flex-col h-full">
       <div className="px-8 py-5 border-b border-white/5 shrink-0 flex items-start justify-between gap-4">
@@ -60,20 +64,47 @@ function SkillDetail({ skill }: { skill: skills.Skill }) {
           <h2 className="text-[16px] font-semibold text-slate-100 leading-snug">{skill.name}</h2>
           <p className="text-[12px] text-slate-600 mt-1 font-mono">{skill.path}</p>
         </div>
-        <button
-          onClick={() => RevealInFinder(skill.path)}
-          title="Reveal in Finder"
-          className="p-1.5 rounded-md transition-colors cursor-pointer text-slate-600 hover:text-slate-400 hover:bg-white/5 shrink-0 mt-0.5"
-        >
-          <FolderOpen className="size-3.5" />
-        </button>
+        <div className="flex items-center gap-1 shrink-0 mt-0.5">
+          <button
+            onClick={() => RevealInFinder(skill.path)}
+            title="Reveal in Finder"
+            className="p-1.5 rounded-md transition-colors cursor-pointer text-slate-600 hover:text-slate-400 hover:bg-white/5"
+          >
+            <FolderOpen className="size-3.5" />
+          </button>
+          <div className="w-px h-4 bg-white/8 mx-0.5" />
+          <div className="flex items-center gap-0.5 bg-white/4 rounded-md p-0.5">
+            <button
+              onClick={() => setViewMode('rendered')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] transition-colors ${
+                viewMode === 'rendered' ? 'bg-white/10 text-slate-200' : 'text-slate-600 hover:text-slate-400'
+              }`}
+            >
+              <Eye className="size-3" />
+              Rendered
+            </button>
+            <button
+              onClick={() => setViewMode('raw')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] transition-colors ${
+                viewMode === 'raw' ? 'bg-white/10 text-slate-200' : 'text-slate-600 hover:text-slate-400'
+              }`}
+            >
+              <Code2 className="size-3" />
+              Raw
+            </button>
+          </div>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto">
         <div className="px-8 py-6">
           {skill.content ? (
-            <pre className="text-[14px] leading-relaxed text-slate-300 font-mono whitespace-pre-wrap wrap-break-word">
-              {skill.content}
-            </pre>
+            viewMode === 'rendered' ? (
+              <MarkdownView content={skill.content} />
+            ) : (
+              <pre className="text-[14px] leading-relaxed text-slate-300 font-mono whitespace-pre-wrap wrap-break-word">
+                {skill.content}
+              </pre>
+            )
           ) : (
             <p className="text-sm text-slate-600">No SKILL.md found in this directory.</p>
           )}
@@ -111,12 +142,12 @@ function EmptyList({ loading }: { loading: boolean }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SkillsPage({
-  skills: skillList,
-  onRefresh,
+  activeProject,
 }: {
-  skills: skills.Skill[] | null
-  onRefresh: () => void
+  activeProject: projects.Project | null
 }) {
+  const projectPath = activeProject?.is_global ? '' : (activeProject?.real_path ?? '')
+  const { data: skillList, isLoading, refetch } = useSkills(projectPath)
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
   const selected = skillList?.find(s => s.path === selectedPath) ?? null
 
@@ -128,7 +159,7 @@ export default function SkillsPage({
             Skills
           </span>
           <button
-            onClick={onRefresh}
+            onClick={() => refetch()}
             className="text-slate-600 hover:text-slate-400 transition-colors cursor-pointer"
             title="Refresh"
           >
@@ -137,7 +168,7 @@ export default function SkillsPage({
         </div>
         <div className="flex-1 overflow-y-auto">
           {!skillList || skillList.length === 0 ? (
-            <EmptyList loading={skillList === null} />
+            <EmptyList loading={isLoading} />
           ) : (
             skillList.map(skill => (
               <SkillRow

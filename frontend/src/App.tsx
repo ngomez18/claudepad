@@ -19,8 +19,9 @@ import SessionsPage from '@/pages/Sessions'
 import SettingsPage from '@/pages/Settings'
 import SkillsPage from '@/pages/Skills'
 import CommandsPage from '@/pages/Commands'
-import { GetPlans, GetUsageStats, GetSessions, GetProjects, AddProject, PickProjectDir, GetSkills, GetCommands, EventsOn } from '@/lib/api'
-import type { plans, usage, sessions, projects, skills, commands } from '../wailsjs/go/models'
+import { AddProject, PickProjectDir } from '@/lib/api'
+import { useProjects } from '@/hooks/useProjects'
+import type { projects } from '../wailsjs/go/models'
 
 interface NavItem {
   id: string
@@ -153,99 +154,12 @@ function Sidebar({ active, onNavigate, projectId, onProjectChange, projectList }
   )
 }
 
-function useProjects() {
-  const [data, setData] = useState<projects.Project[] | null>(null)
-
-  useEffect(() => {
-    const fetch = () => GetProjects().then(setData).catch(() => setData([]))
-    fetch()
-    const off = EventsOn('projects:updated', fetch)
-    return off
-  }, [])
-
-  return data
-}
-
-function useSessions() {
-  const [data, setData] = useState<sessions.Session[] | null>(null)
-
-  const fetch = () => GetSessions().then(setData).catch(() => setData([]))
-
-  useEffect(() => {
-    fetch()
-    const off = EventsOn('sessions:updated', fetch)
-    return off
-  }, [])
-
-  return { data, refresh: fetch }
-}
-
-function usePlans() {
-  const [data, setData] = useState<plans.Plan[] | null>(null)
-
-  const fetch = () => GetPlans().then(setData).catch(() => setData([]))
-
-  useEffect(() => {
-    fetch()
-    const off = EventsOn('plans:updated', fetch)
-    return off
-  }, [])
-
-  return { data, refresh: fetch }
-}
-
-function useSkills(projectPath: string) {
-  const [data, setData] = useState<skills.Skill[] | null>(null)
-
-  const fetch = () => GetSkills(projectPath).then(setData).catch(() => setData([]))
-
-  useEffect(() => {
-    setData(null)
-    fetch()
-    const off = EventsOn('skills:updated', fetch)
-    return off
-  }, [projectPath])
-
-  return { data, refresh: fetch }
-}
-
-function useCommands(projectPath: string) {
-  const [data, setData] = useState<commands.Command[] | null>(null)
-
-  const fetch = () => GetCommands(projectPath).then(setData).catch(() => setData([]))
-
-  useEffect(() => {
-    setData(null)
-    fetch()
-    const off = EventsOn('commands:updated', fetch)
-    return off
-  }, [projectPath])
-
-  return { data, refresh: fetch }
-}
-
-function useUsageStats() {
-  const [data, setData] = useState<usage.StatsCache | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const fetch = () => GetUsageStats().then(setData).catch(err => setError(String(err)))
-    fetch()
-    const off = EventsOn('usage:stats-updated', fetch)
-    return off
-  }, [])
-
-  return { data, error }
-}
-
-function PageContent({ section, activeProject, projectList }: { section: string; activeProject: projects.Project | null; projectList: projects.Project[] | null }) {
+function PageContent({ section, activeProject, projectList }: {
+  section: string
+  activeProject: projects.Project | null
+  projectList: projects.Project[] | null
+}) {
   const item = NAV_ITEMS.find(n => n.id === section)
-  const { data: plansData, refresh: refreshPlans } = usePlans()
-  const { data: sessionsData, refresh: refreshSessions } = useSessions()
-  const projectPath = activeProject?.is_global ? '' : (activeProject?.real_path ?? '')
-  const { data: skillsData, refresh: refreshSkills } = useSkills(projectPath)
-  const { data: commandsData, refresh: refreshCommands } = useCommands(projectPath)
-  const { data: usageData, error: usageError } = useUsageStats()
 
   const isEdgeToEdge = section === 'plans' || section === 'sessions' || section === 'skills' || section === 'commands'
 
@@ -261,19 +175,17 @@ function PageContent({ section, activeProject, projectList }: { section: string;
       )}
 
       {section === 'plans' ? (
-        <PlansPage plans={plansData} onRefresh={refreshPlans} projects={projectList} />
+        <PlansPage projects={projectList} />
       ) : section === 'sessions' ? (
-        <SessionsPage sessions={sessionsData} onRefresh={refreshSessions} activeProject={activeProject} />
+        <SessionsPage activeProject={activeProject} />
       ) : section === 'settings' ? (
         <SettingsPage activeProject={activeProject} />
       ) : section === 'skills' ? (
-        <SkillsPage skills={skillsData} onRefresh={refreshSkills} />
+        <SkillsPage activeProject={activeProject} />
       ) : section === 'commands' ? (
-        <CommandsPage commands={commandsData} onRefresh={refreshCommands} />
+        <CommandsPage activeProject={activeProject} />
       ) : section === 'usage' ? (
-        usageError
-          ? <p className="text-sm text-red-400/70">{usageError}</p>
-          : <UsagePage data={usageData} />
+        <UsagePage />
       ) : (
         <p className="text-sm text-slate-600">{item?.label} content goes here.</p>
       )}
@@ -284,7 +196,7 @@ function PageContent({ section, activeProject, projectList }: { section: string;
 export default function App() {
   const [activeSection, setActiveSection] = useState('plans')
   const [projectId, setProjectId] = useState<string>('')
-  const projectList = useProjects()
+  const { data: projectList } = useProjects()
 
   // Default to the global project (first in the list) once loaded.
   useEffect(() => {
@@ -302,9 +214,9 @@ export default function App() {
         onNavigate={setActiveSection}
         projectId={projectId}
         onProjectChange={setProjectId}
-        projectList={projectList}
+        projectList={projectList ?? null}
       />
-      <PageContent section={activeSection} activeProject={activeProject} projectList={projectList} />
+      <PageContent section={activeSection} activeProject={activeProject} projectList={projectList ?? null} />
     </div>
   )
 }

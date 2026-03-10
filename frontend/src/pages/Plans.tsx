@@ -2,7 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 import { FileText, RotateCcw, Eye, Code2, Pencil, Pin, Archive, SlidersHorizontal, ChevronDown, Globe, FolderOpen, Check } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels'
+import { useQueryClient } from '@tanstack/react-query'
 import { SetPlanName, SetPlanMeta, RevealInFinder } from '@/lib/api'
+import { usePlans } from '@/hooks/usePlans'
+import { useProjects } from '@/hooks/useProjects'
 import { relativeTime } from '@/lib/utils'
 import type { plans, projects } from '../../wailsjs/go/models'
 import type { Components } from 'react-markdown'
@@ -240,12 +243,12 @@ type MetaState = {
   archived: boolean
 }
 
-function MetaPopup({ plan, onRefresh, projectList, onClose }: {
+function MetaPopup({ plan, projectList, onClose }: {
   plan: plans.Plan
-  onRefresh: () => void
   projectList: projects.Project[] | null
   onClose: () => void
 }) {
+  const queryClient = useQueryClient()
   const [meta, setMeta] = useState<MetaState>({
     pinned: plan.pinned,
     projectId: plan.projectId,
@@ -281,7 +284,7 @@ function MetaPopup({ plan, onRefresh, projectList, onClose }: {
         notes: next.notes,
         archived: next.archived,
       })
-      onRefresh()
+      queryClient.invalidateQueries({ queryKey: ['plans'] })
       setSaveStatus({ kind: 'saved' })
       setTimeout(() => setSaveStatus({ kind: 'idle' }), 1500)
     } catch (err) {
@@ -395,11 +398,11 @@ function MetaPopup({ plan, onRefresh, projectList, onClose }: {
 
 // ── Detail panel ──────────────────────────────────────────────────────────────
 
-function PlanDetail({ plan, onRefresh, projectList }: {
+function PlanDetail({ plan, projectList }: {
   plan: plans.Plan
-  onRefresh: () => void
   projectList: projects.Project[] | null
 }) {
+  const queryClient = useQueryClient()
   const [viewMode, setViewMode] = useState<'rendered' | 'raw'>('rendered')
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState('')
@@ -420,7 +423,7 @@ function PlanDetail({ plan, onRefresh, projectList }: {
       await SetPlanName(plan.path, trimmed)
       setRenaming(false)
       setRenameStatus({ kind: 'saved' })
-      onRefresh()
+      queryClient.invalidateQueries({ queryKey: ['plans'] })
       setTimeout(() => setRenameStatus({ kind: 'idle' }), 2000)
     } catch (err) {
       setRenameStatus({ kind: 'error', msg: String(err) })
@@ -436,7 +439,7 @@ function PlanDetail({ plan, onRefresh, projectList }: {
         notes: plan.notes,
         archived: !plan.archived,
       })
-      onRefresh()
+      queryClient.invalidateQueries({ queryKey: ['plans'] })
     } catch { /* ignore */ }
   }
 
@@ -520,7 +523,6 @@ function PlanDetail({ plan, onRefresh, projectList }: {
             {showMeta && (
               <MetaPopup
                 plan={plan}
-                onRefresh={onRefresh}
                 projectList={projectList}
                 onClose={() => setShowMeta(false)}
               />
@@ -594,14 +596,14 @@ function EmptyList({ loading }: { loading: boolean }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function PlansPage({
-  plans: planList,
-  onRefresh,
   projects: projectList,
 }: {
-  plans: plans.Plan[] | null
-  onRefresh: () => void
   projects: projects.Project[] | null
 }) {
+  const { data: planList, isLoading, refetch } = usePlans()
+  const { data: fetchedProjects } = useProjects()
+  const resolvedProjectList = projectList ?? fetchedProjects ?? null
+
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
   const [showArchived, setShowArchived] = useState(false)
 
@@ -625,7 +627,7 @@ export default function PlansPage({
             >
               Archived
             </button>
-            <button onClick={onRefresh} className="text-slate-600 hover:text-slate-400 transition-colors cursor-pointer" title="Refresh">
+            <button onClick={() => refetch()} className="text-slate-600 hover:text-slate-400 transition-colors cursor-pointer" title="Refresh">
               <RotateCcw className="size-3" />
             </button>
           </div>
@@ -633,7 +635,7 @@ export default function PlansPage({
 
         <div className="flex-1 overflow-y-auto">
           {!visiblePlans || visiblePlans.length === 0 ? (
-            <EmptyList loading={planList === null} />
+            <EmptyList loading={isLoading} />
           ) : (
             visiblePlans.map(plan => (
               <PlanRow
@@ -653,7 +655,7 @@ export default function PlansPage({
 
       <Panel className="overflow-hidden">
         {selected
-          ? <PlanDetail plan={selected} onRefresh={onRefresh} projectList={projectList} />
+          ? <PlanDetail plan={selected} projectList={resolvedProjectList} />
           : <NoSelection />
         }
       </Panel>
