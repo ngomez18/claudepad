@@ -9,6 +9,7 @@ import { useProjects } from '@/hooks/useProjects'
 import { relativeTime } from '@/lib/utils'
 import type { plans, projects } from '../../wailsjs/go/models'
 import type { Components } from 'react-markdown'
+import SearchableContent from '@/components/SearchableContent'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -194,6 +195,9 @@ const markdownComponents: Components = {
   h1: ({ children }) => <h1 className="text-xl font-semibold text-slate-100 mb-3 mt-6 first:mt-0">{children}</h1>,
   h2: ({ children }) => <h2 className="text-[16px] font-semibold text-slate-100 mb-2 mt-5 first:mt-0">{children}</h2>,
   h3: ({ children }) => <h3 className="text-[14px] font-semibold text-slate-200 mb-2 mt-4 first:mt-0">{children}</h3>,
+  h4: ({ children }) => <h4 className="text-[13px] font-semibold text-slate-300 mb-1.5 mt-3 first:mt-0">{children}</h4>,
+  h5: ({ children }) => <h5 className="text-[12px] font-semibold text-slate-400 mb-1 mt-3 first:mt-0">{children}</h5>,
+  h6: ({ children }) => <h6 className="text-[12px] font-medium text-slate-500 mb-1 mt-2 first:mt-0">{children}</h6>,
   p:  ({ children }) => <p className="text-[14px] text-slate-300 leading-relaxed mb-3">{children}</p>,
   code: ({ children, className }) => {
     const isBlock = !!className
@@ -459,22 +463,25 @@ function PlanDetail({ plan, projectList }: {
               className="w-full text-[16px] font-semibold text-slate-100 bg-white/5 border border-blue-500/40 rounded px-2 py-0.5 outline-none focus:border-blue-500/70"
             />
           ) : (
-            <div className="group/rename flex items-center gap-2 min-w-0">
-              <h2
-                className="text-[16px] font-semibold text-slate-100 leading-snug truncate cursor-pointer"
-                onClick={() => { setRenameValue(displayName(plan)); setRenaming(true) }}
-              >
-                {displayName(plan)}
-              </h2>
-              <button
-                onClick={() => { setRenameValue(displayName(plan)); setRenaming(true) }}
-                className="opacity-0 group-hover/rename:opacity-100 transition-opacity text-slate-600 hover:text-slate-400 shrink-0"
-                title="Rename"
-              >
-                <Pencil className="size-3.5" />
-              </button>
-              <StatusBadge status={renameStatus} />
-            </div>
+            <>
+              <div className="group/rename flex items-center gap-2 min-w-0">
+                <h2
+                  className="text-[16px] font-semibold text-slate-100 leading-snug truncate cursor-pointer"
+                  onClick={() => { setRenameValue(displayName(plan)); setRenaming(true) }}
+                >
+                  {displayName(plan)}
+                </h2>
+                <button
+                  onClick={() => { setRenameValue(displayName(plan)); setRenaming(true) }}
+                  className="opacity-0 group-hover/rename:opacity-100 transition-opacity text-slate-600 hover:text-slate-400 shrink-0"
+                  title="Rename"
+                >
+                  <Pencil className="size-3.5" />
+                </button>
+                <StatusBadge status={renameStatus} />
+              </div>
+              <p className="text-[11px] text-slate-600 font-mono mt-0.5 truncate">{plan.filename}</p>
+            </>
           )}
           {plan.todoTotal > 0 && (
             <p className="text-[12px] text-slate-600 mt-1">
@@ -557,17 +564,15 @@ function PlanDetail({ plan, projectList }: {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="px-8 py-6">
-          {viewMode === 'rendered' ? (
-            <ReactMarkdown components={markdownComponents}>{plan.content}</ReactMarkdown>
-          ) : (
-            <pre className="text-[14px] leading-relaxed text-slate-300 font-mono whitespace-pre-wrap wrap-break-word">
-              {plan.content}
-            </pre>
-          )}
-        </div>
-      </div>
+      <SearchableContent className="flex-1 overflow-y-auto" innerClassName="px-8 py-6" contentKey={plan.path}>
+        {viewMode === 'rendered' ? (
+          <ReactMarkdown components={markdownComponents}>{plan.content}</ReactMarkdown>
+        ) : (
+          <pre className="text-[14px] leading-relaxed text-slate-300 font-mono whitespace-pre-wrap wrap-break-word">
+            {plan.content}
+          </pre>
+        )}
+      </SearchableContent>
     </div>
   )
 }

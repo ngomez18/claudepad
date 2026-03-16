@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import MarkdownView from '@/components/MarkdownView'
+import SearchableContent from '@/components/SearchableContent'
 import { MessageSquare, RotateCcw, GitBranch, Clock, Hash, Wrench } from 'lucide-react'
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels'
 import { useSessions } from '@/hooks/useSessions'
@@ -140,7 +141,7 @@ function TranscriptView({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <SearchableContent className="flex-1 overflow-y-auto" innerClassName="px-4 py-4" contentKey={session.sessionId}>
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-[14px] text-slate-600">Loading…</p>
@@ -157,7 +158,7 @@ function TranscriptView({
             <div ref={bottomRef} />
           </div>
         )}
-      </div>
+      </SearchableContent>
     </div>
   )
 }

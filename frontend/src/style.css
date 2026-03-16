@@ -164,3 +164,15 @@ html, body {
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* In-panel search highlights */
+mark.sh {
+  background: rgba(234, 179, 8, 0.25);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+mark.sh-current {
+  background: rgba(234, 179, 8, 0.55);
+  outline: 1px solid rgba(234, 179, 8, 0.5);
+}
