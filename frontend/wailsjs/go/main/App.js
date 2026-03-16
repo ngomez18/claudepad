@@ -6,8 +6,20 @@ export function AddProject(arg1) {
   return window['go']['main']['App']['AddProject'](arg1);
 }
 
+export function DeleteNote(arg1) {
+  return window['go']['main']['App']['DeleteNote'](arg1);
+}
+
 export function GetCommands(arg1) {
   return window['go']['main']['App']['GetCommands'](arg1);
+}
+
+export function GetMcpServers() {
+  return window['go']['main']['App']['GetMcpServers']();
+}
+
+export function GetNotes() {
+  return window['go']['main']['App']['GetNotes']();
 }
 
 export function GetPlans() {
@@ -52,6 +64,18 @@ export function RemoveProject(arg1) {
 
 export function RevealInFinder(arg1) {
   return window['go']['main']['App']['RevealInFinder'](arg1);
+}
+
+export function SetMcpServers(arg1) {
+  return window['go']['main']['App']['SetMcpServers'](arg1);
+}
+
+export function SetNoteMeta(arg1, arg2) {
+  return window['go']['main']['App']['SetNoteMeta'](arg1, arg2);
+}
+
+export function SetNoteTitle(arg1, arg2) {
+  return window['go']['main']['App']['SetNoteTitle'](arg1, arg2);
 }
 
 export function SetPlanMeta(arg1, arg2) {

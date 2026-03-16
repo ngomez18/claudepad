@@ -40,13 +40,20 @@ function SkillRow({
         {skill.modifiedAt && (
           <span className="text-[11px] text-slate-700">· {relativeTime(skill.modifiedAt)}</span>
         )}
-        <span className={`ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded ${
-          skill.scope === 'project'
-            ? 'bg-amber-500/15 text-amber-400/80'
-            : 'bg-white/5 text-slate-600'
-        }`}>
-          {skill.scope}
-        </span>
+        <div className="ml-auto flex items-center gap-1">
+          {skill.dirName.startsWith('claudepad-') && (
+            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400/70 border border-blue-500/20">
+              Claudepad
+            </span>
+          )}
+          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+            skill.scope === 'project'
+              ? 'bg-amber-500/15 text-amber-400/80'
+              : 'bg-white/5 text-slate-600'
+          }`}>
+            {skill.scope}
+          </span>
+        </div>
       </div>
     </button>
   )

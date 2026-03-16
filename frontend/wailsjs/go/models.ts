@@ -27,6 +27,61 @@ export namespace commands {
 
 }
 
+export namespace notes {
+	
+	export class Note {
+	    path: string;
+	    filename: string;
+	    title: string;
+	    content: string;
+	    project: string;
+	    modifiedAt: string;
+	    wordCount: number;
+	    tags: string[];
+	    pinned: boolean;
+	    notes: string;
+	    archived: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Note(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.filename = source["filename"];
+	        this.title = source["title"];
+	        this.content = source["content"];
+	        this.project = source["project"];
+	        this.modifiedAt = source["modifiedAt"];
+	        this.wordCount = source["wordCount"];
+	        this.tags = source["tags"];
+	        this.pinned = source["pinned"];
+	        this.notes = source["notes"];
+	        this.archived = source["archived"];
+	    }
+	}
+	export class NoteMeta {
+	    tags: string[];
+	    pinned: boolean;
+	    notes: string;
+	    archived: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new NoteMeta(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.tags = source["tags"];
+	        this.pinned = source["pinned"];
+	        this.notes = source["notes"];
+	        this.archived = source["archived"];
+	    }
+	}
+
+}
+
 export namespace plans {
 	
 	export class Plan {

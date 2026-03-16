@@ -10,6 +10,17 @@ import (
 	"database/sql"
 )
 
+const clearNoteTitle = `-- name: ClearNoteTitle :exec
+UPDATE file_metadata
+SET friendly_name = NULL, updated_at = datetime('now')
+WHERE real_path = ? AND file_type = 'note'
+`
+
+func (q *Queries) ClearNoteTitle(ctx context.Context, realPath string) error {
+	_, err := q.db.ExecContext(ctx, clearNoteTitle, realPath)
+	return err
+}
+
 const clearPlanName = `-- name: ClearPlanName :exec
 UPDATE file_metadata
 SET friendly_name = NULL, updated_at = datetime('now')
@@ -19,6 +30,32 @@ WHERE real_path = ? AND file_type = 'plan'
 func (q *Queries) ClearPlanName(ctx context.Context, realPath string) error {
 	_, err := q.db.ExecContext(ctx, clearPlanName, realPath)
 	return err
+}
+
+const getNoteMeta = `-- name: GetNoteMeta :one
+SELECT friendly_name, pinned, tags, notes, archived
+FROM file_metadata WHERE real_path = ? AND file_type = 'note'
+`
+
+type GetNoteMetaRow struct {
+	FriendlyName sql.NullString
+	Pinned       int64
+	Tags         string
+	Notes        string
+	Archived     int64
+}
+
+func (q *Queries) GetNoteMeta(ctx context.Context, realPath string) (GetNoteMetaRow, error) {
+	row := q.db.QueryRowContext(ctx, getNoteMeta, realPath)
+	var i GetNoteMetaRow
+	err := row.Scan(
+		&i.FriendlyName,
+		&i.Pinned,
+		&i.Tags,
+		&i.Notes,
+		&i.Archived,
+	)
+	return i, err
 }
 
 const getPlanMeta = `-- name: GetPlanMeta :one
@@ -47,6 +84,57 @@ func (q *Queries) GetPlanMeta(ctx context.Context, realPath string) (GetPlanMeta
 		&i.Archived,
 	)
 	return i, err
+}
+
+const upsertNoteMeta = `-- name: UpsertNoteMeta :exec
+INSERT INTO file_metadata (id, real_path, file_type, pinned, tags, notes, archived)
+VALUES (?, ?, 'note', ?, ?, ?, ?)
+ON CONFLICT(real_path) DO UPDATE SET
+    pinned     = excluded.pinned,
+    tags       = excluded.tags,
+    notes      = excluded.notes,
+    archived   = excluded.archived,
+    updated_at = datetime('now')
+`
+
+type UpsertNoteMetaParams struct {
+	ID       string
+	RealPath string
+	Pinned   int64
+	Tags     string
+	Notes    string
+	Archived int64
+}
+
+func (q *Queries) UpsertNoteMeta(ctx context.Context, arg UpsertNoteMetaParams) error {
+	_, err := q.db.ExecContext(ctx, upsertNoteMeta,
+		arg.ID,
+		arg.RealPath,
+		arg.Pinned,
+		arg.Tags,
+		arg.Notes,
+		arg.Archived,
+	)
+	return err
+}
+
+const upsertNoteTitle = `-- name: UpsertNoteTitle :exec
+INSERT INTO file_metadata (id, real_path, file_type, friendly_name)
+VALUES (?, ?, 'note', ?)
+ON CONFLICT(real_path) DO UPDATE SET
+    friendly_name = excluded.friendly_name,
+    updated_at    = datetime('now')
+`
+
+type UpsertNoteTitleParams struct {
+	ID           string
+	RealPath     string
+	FriendlyName sql.NullString
+}
+
+func (q *Queries) UpsertNoteTitle(ctx context.Context, arg UpsertNoteTitleParams) error {
+	_, err := q.db.ExecContext(ctx, upsertNoteTitle, arg.ID, arg.RealPath, arg.FriendlyName)
+	return err
 }
 
 const upsertPlanMeta = `-- name: UpsertPlanMeta :exec

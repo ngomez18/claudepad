@@ -44,17 +44,19 @@ Tracks Claude Code project directories known to Claudepad.
 
 ### `file_metadata`
 
-Enrichment for individual files managed by Claudepad (plans, hooks, skills, commands, etc.).
+Enrichment for individual files managed by Claudepad (plans, notes, skills, commands, etc.).
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | TEXT PK | UUID |
 | `real_path` | TEXT UNIQUE NOT NULL | Absolute path to the file |
-| `file_type` | TEXT NOT NULL | e.g. `plan`, `hook`, `skill`, `command` |
-| `friendly_name` | TEXT | User-assigned display name |
+| `file_type` | TEXT NOT NULL | `plan` \| `note` \| `skill` \| `command` |
+| `friendly_name` | TEXT | User-assigned display name (overrides frontmatter title for notes) |
 | `tags` | TEXT | JSON array, e.g. `["work", "debug"]` |
-| `notes` | TEXT | Free-form markdown notes |
+| `notes` | TEXT | Private annotations (not written to the file) |
 | `archived` | INTEGER | 1 = hidden from default views |
+| `pinned` | INTEGER | 1 = floated to top of list |
+| `project_id` | TEXT | Plans only: associated project UUID |
 | `created_at` | DATETIME | |
 | `updated_at` | DATETIME | |
 

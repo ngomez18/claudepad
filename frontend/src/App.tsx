@@ -6,6 +6,8 @@ import {
   Brain,
   Terminal,
   BarChart2,
+  StickyNote,
+  Plug,
   ChevronDown,
   Plus,
   Globe,
@@ -19,6 +21,8 @@ import SessionsPage from '@/pages/Sessions'
 import SettingsPage from '@/pages/Settings'
 import SkillsPage from '@/pages/Skills'
 import CommandsPage from '@/pages/Commands'
+import NotesPage from '@/pages/Notes'
+import McpServersPage from '@/pages/McpServers'
 import { AddProject, PickProjectDir } from '@/lib/api'
 import { useProjects } from '@/hooks/useProjects'
 import type { projects } from '../wailsjs/go/models'
@@ -30,12 +34,14 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'plans',    label: 'Plans',    Icon: ClipboardList },
-  { id: 'sessions', label: 'Sessions', Icon: MessageSquare },
-  { id: 'settings', label: 'Settings', Icon: Settings },
-  { id: 'skills',   label: 'Skills',   Icon: Brain },
-  { id: 'commands', label: 'Commands', Icon: Terminal },
-  { id: 'usage',    label: 'Usage',    Icon: BarChart2 },
+  { id: 'plans',       label: 'Plans',      Icon: ClipboardList },
+  { id: 'notes',       label: 'Notes',      Icon: StickyNote },
+  { id: 'sessions',    label: 'Sessions',   Icon: MessageSquare },
+  { id: 'settings',    label: 'Settings',   Icon: Settings },
+  { id: 'skills',      label: 'Skills',     Icon: Brain },
+  { id: 'commands',    label: 'Commands',   Icon: Terminal },
+  { id: 'mcp-servers', label: 'MCP',        Icon: Plug },
+  { id: 'usage',       label: 'Usage',      Icon: BarChart2 },
 ]
 
 function ProjectPicker({ projectId, onProjectChange, projectList, onAddProject }: {
@@ -161,7 +167,7 @@ function PageContent({ section, activeProject, projectList }: {
 }) {
   const item = NAV_ITEMS.find(n => n.id === section)
 
-  const isEdgeToEdge = section === 'plans' || section === 'sessions' || section === 'skills' || section === 'commands'
+  const isEdgeToEdge = section === 'plans' || section === 'notes' || section === 'sessions' || section === 'skills' || section === 'commands'
 
   return (
     <main className={`flex-1 flex flex-col overflow-hidden bg-[#0f1117] ${isEdgeToEdge ? '' : 'p-10 overflow-y-auto'}`}>
@@ -176,6 +182,8 @@ function PageContent({ section, activeProject, projectList }: {
 
       {section === 'plans' ? (
         <PlansPage projects={projectList} />
+      ) : section === 'notes' ? (
+        <NotesPage />
       ) : section === 'sessions' ? (
         <SessionsPage activeProject={activeProject} />
       ) : section === 'settings' ? (
@@ -184,6 +192,8 @@ function PageContent({ section, activeProject, projectList }: {
         <SkillsPage activeProject={activeProject} />
       ) : section === 'commands' ? (
         <CommandsPage activeProject={activeProject} />
+      ) : section === 'mcp-servers' ? (
+        <McpServersPage />
       ) : section === 'usage' ? (
         <UsagePage />
       ) : (

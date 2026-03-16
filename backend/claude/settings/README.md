@@ -32,3 +32,25 @@ Validates that `content` is valid JSON, creates parent directories if needed, th
 - `Content: "{}"`
 
 The frontend uses `Exists` to show a notice: "This file doesn't exist yet — saving will create it."
+
+## MCP server configuration
+
+The `mcpServers` key in `~/.claude.json` configures MCP servers for Claude Code.
+
+### `ReadMcpServers() (map[string]McpServerConfig, error)`
+
+Reads the `mcpServers` object from `~/.claude.json`. Returns an empty map if the file or key is absent. Never errors on missing file.
+
+### `WriteMcpServers(servers map[string]McpServerConfig) error`
+
+Updates only the `mcpServers` key in `~/.claude.json`, preserving all other keys. Creates the file if it doesn't exist.
+
+### `McpServerConfig` fields
+
+| Field | Description |
+|---|---|
+| `type` | `"stdio"` \| `"sse"` \| `"http"` |
+| `command` | Executable path (stdio only) |
+| `args` | Command arguments |
+| `url` | Server URL (sse/http only) |
+| `headers` | HTTP headers map |

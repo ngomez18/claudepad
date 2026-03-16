@@ -20,6 +20,12 @@ export {
   SetPlanMeta,
   SetProjectLastOpened,
   RevealInFinder,
+  GetNotes,
+  DeleteNote,
+  SetNoteTitle,
+  SetNoteMeta,
+  GetMcpServers,
+  SetMcpServers,
 } from '../../wailsjs/go/main/App'
 
 export { EventsOn } from '../../wailsjs/runtime/runtime'

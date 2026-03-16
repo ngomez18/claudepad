@@ -143,3 +143,33 @@ func (a *App) SetPlanName(path, name string) error {
 func (a *App) SetPlanMeta(path string, meta claude.PlanMeta) error {
 	return a.claude.SetPlanMeta(path, meta)
 }
+
+// GetMcpServers returns the mcpServers config from ~/.claude.json.
+func (a *App) GetMcpServers() (map[string]claude.McpServerConfig, error) {
+	return a.claude.GetMcpServers()
+}
+
+// SetMcpServers updates the mcpServers key in ~/.claude.json.
+func (a *App) SetMcpServers(servers map[string]claude.McpServerConfig) error {
+	return a.claude.SetMcpServers(servers)
+}
+
+// DeleteNote removes a note file from disk.
+func (a *App) DeleteNote(path string) error {
+	return a.claude.DeleteNote(path)
+}
+
+// GetNotes returns all note files from ~/.claudepad/notes/.
+func (a *App) GetNotes() ([]claude.Note, error) {
+	return a.claude.GetNotes()
+}
+
+// SetNoteTitle stores a friendly display title for a note. Pass empty string to clear.
+func (a *App) SetNoteTitle(path, title string) error {
+	return a.claude.SetNoteTitle(path, title)
+}
+
+// SetNoteMeta stores metadata for a note (tags, pinned, notes, archived).
+func (a *App) SetNoteMeta(path string, meta claude.NoteMeta) error {
+	return a.claude.SetNoteMeta(path, meta)
+}

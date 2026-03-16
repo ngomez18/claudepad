@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"claudepad/backend/claude/commands"
+	"claudepad/backend/claude/notes"
 	"claudepad/backend/claude/plans"
 	"claudepad/backend/claude/projects"
 	"claudepad/backend/claude/sessions"
@@ -14,10 +15,12 @@ import (
 	"claudepad/backend/claude/usage"
 	"claudepad/backend/db"
 	fswatch "claudepad/backend/fs"
+	"claudepad/backend/mcp"
 )
 
 // Re-export sub-package types so app.go only needs this package.
 type StatsCache = usage.StatsCache
+type McpServerConfig = settings.McpServerConfig
 type Plan = plans.Plan
 type Session = sessions.Session
 type TranscriptMessage = sessions.TranscriptMessage
@@ -26,6 +29,8 @@ type SettingsFile = settings.SettingsFile
 type Skill = skills.Skill
 type Command = commands.Command
 type PlanMeta = plans.PlanMeta
+type Note = notes.Note
+type NoteMeta = notes.NoteMeta
 
 // Client provides access to Claude Code's local data files.
 // It owns the file watcher and all path resolution — callers never touch paths directly.
@@ -71,6 +76,21 @@ func (c *Client) Start(ctx context.Context, emit func(event string)) error {
 		if live, err := plans.ReadPlans(c.db.Queries()); err == nil {
 			_ = plans.SyncToPreserved(live)
 		}
+	}()
+
+	// Install save-note slash command and notes skill on startup (best-effort).
+	go func() {
+		_ = notes.InstallSaveNoteCommand()
+		_ = notes.InstallNotesSkill()
+	}()
+
+	// Start embedded MCP server and register it in ~/.claude.json (best-effort).
+	go func() {
+		_, port, err := mcp.Start(ctx, mcp.DefaultPort)
+		if err != nil {
+			return
+		}
+		_ = settings.InstallMcpServer(port)
 	}()
 
 	// Auto-discover projects from disk on startup (best-effort).
@@ -180,6 +200,13 @@ func (c *Client) registerWatches(emit func(string)) error {
 		return err
 	}
 
+	notesDirPath, notesDirErr := notes.NotesDir()
+	if notesDirErr == nil {
+		if err := c.watcher.WatchDir(notesDirPath, func() { emit("notes:updated") }); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -255,4 +282,28 @@ func (c *Client) GetCommands(projectPath string) ([]Command, error) {
 
 func (c *Client) UpdateCommand(path, content string) error {
 	return commands.WriteCommand(path, content)
+}
+
+func (c *Client) GetMcpServers() (map[string]McpServerConfig, error) {
+	return settings.ReadMcpServers()
+}
+
+func (c *Client) SetMcpServers(servers map[string]McpServerConfig) error {
+	return settings.WriteMcpServers(servers)
+}
+
+func (c *Client) DeleteNote(path string) error {
+	return notes.DeleteNote(path)
+}
+
+func (c *Client) GetNotes() ([]Note, error) {
+	return notes.ReadNotes(c.db.Queries())
+}
+
+func (c *Client) SetNoteTitle(path, title string) error {
+	return notes.SetNoteTitle(c.db.Queries(), path, title)
+}
+
+func (c *Client) SetNoteMeta(path string, meta NoteMeta) error {
+	return notes.SetNoteMeta(c.db.Queries(), path, meta)
 }

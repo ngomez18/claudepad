@@ -29,12 +29,14 @@ Claudepad is a local-first desktop app that reads and enriches the `~/.claude/` 
 | **Skills** | `.claude/skills/` markdown files — read and edit UI |
 | **Commands** | `.claude/commands/` slash command files — read and edit UI |
 | **Usage** | Dashboard from `~/.claude/stats-cache.json` — activity, tokens, model breakdown |
+| **Notes** | Markdown notes in `~/.claudepad/notes/`, captured from Claude Code sessions via slash command or MCP tool |
+| **MCP Servers** | View and manage MCP server entries in `~/.claude.json`, including the built-in Claudepad server |
 
 ---
 
 ## Key Design Principles
 
-**Never break Claude Code.** Claudepad does not rename or delete Claude's files. Friendly names, tags, and notes live only in Claudepad's SQLite database. The real filenames on disk are never touched.
+**Never break Claude Code.** Claudepad does not rename or delete Claude's files. Friendly names, tags, and notes live only in Claudepad's SQLite database. The real filenames on disk are never touched (except for notes, which Claudepad owns entirely).
 
 **Enrichment layer, not replacement.** The `.claude/` files are always the source of truth. Claudepad reads them, enriches them with metadata where applicable, and writes back only when the user explicitly edits content.
 
@@ -77,11 +79,13 @@ CREATE TABLE projects (
 CREATE TABLE file_metadata (
     id            TEXT PRIMARY KEY,        -- UUID, stable internal ID
     real_path     TEXT NOT NULL UNIQUE,    -- absolute path on disk
-    file_type     TEXT NOT NULL,           -- 'plan' | 'skill' | 'command' | 'settings'
+    file_type     TEXT NOT NULL,           -- 'plan' | 'note' | 'skill' | 'command'
     friendly_name TEXT,                    -- user-defined display name
     tags          TEXT NOT NULL DEFAULT '[]',  -- JSON array
     notes         TEXT NOT NULL DEFAULT '',
     archived      INTEGER NOT NULL DEFAULT 0,
+    pinned        INTEGER NOT NULL DEFAULT 0,
+    project_id    TEXT,                    -- plans: associated project UUID
     created_at    DATETIME DEFAULT (datetime('now')),
     updated_at    DATETIME DEFAULT (datetime('now'))
 );
@@ -91,11 +95,40 @@ Note: `usage_snapshots` and `app_settings` tables exist in the schema but are no
 
 ### File watching
 
-`fsnotify` watches all registered `.claude/` directories. When Claude Code creates, modifies, or deletes files externally, Claudepad syncs the `file_metadata` table automatically. New files get a UUID and real path but no friendly name — surfaced in the UI as unnamed until the user renames them.
+`fsnotify` watches all registered `.claude/` directories and `~/.claudepad/notes/`. When Claude Code creates, modifies, or deletes files externally, Claudepad detects changes via file system events and invalidates the relevant TanStack Query cache (via Wails events emitted to the frontend). New plan files get a UUID and real path but no friendly name — surfaced in the UI as unnamed until the user renames them. Notes written by the MCP server or slash command appear in the Notes page automatically without any manual refresh.
 
 ### Todo progress
 
 Plan todos are parsed on-the-fly from markdown checkbox syntax (`- [x]` / `- [ ]`). No SQLite state for todos — the markdown file is the source of truth, progress bars are computed at read time.
+
+### Notes
+
+Notes live in `~/.claudepad/notes/{YYYY-MM-DD}-{slug}.md`. Unlike plan files (which belong to Claude Code), notes are owned by Claudepad — they are never auto-deleted by Claude Code. Each note file uses YAML frontmatter:
+
+```markdown
+---
+title: How streams work in Go
+project: /Users/ngomez/code/myproject
+---
+
+[note body in markdown]
+```
+
+Mutable metadata (tags, pinned, archived, private annotations) is stored in SQLite with `file_type='note'`. The title in frontmatter is used as the display name; if absent, a title is derived from the filename.
+
+### MCP server configuration
+
+`~/.claude.json` holds the `mcpServers` map that Claude Code reads to discover MCP servers. Claudepad reads and writes only the `mcpServers` key in that file, preserving all other content. On startup, Claudepad automatically upserts its own entry:
+
+```json
+{
+  "mcpServers": {
+    "claudepad": { "type": "sse", "url": "http://127.0.0.1:45789/sse" }
+  }
+}
+```
+
+See `docs/MCP.md` for full details on the embedded MCP server.
 
 ---
 
@@ -116,47 +149,53 @@ The React frontend uses a `lib/api.ts` abstraction layer that re-exports Wails I
 ```
 claudepad/
 ├── main.go                         # Wails entry
-├── app.go                          # Wails app struct, lifecycle
+├── app.go                          # Wails app struct, lifecycle, bindings
 ├── backend/
 │   ├── claude/
 │   │   ├── claude.go               # Client struct, facade over sub-packages
-│   │   ├── fs/                     # .claude dir discovery, fsnotify watcher
-│   │   ├── settings/               # read/write settings.json hierarchy
-│   │   ├── skills/                 # read/write .claude/skills/
 │   │   ├── commands/               # read/write .claude/commands/
+│   │   ├── notes/                  # read/write ~/.claudepad/notes/ (owned by Claudepad)
 │   │   ├── plans/                  # read plans/, parse todos on-the-fly
-│   │   ├── sessions/               # parse projects/ JSONL transcripts
-│   │   ├── usage/                  # parse stats-cache.json
 │   │   ├── projects/               # project registry operations
-│   │   └── frontmatter/            # shared frontmatter parsing utilities
-│   └── db/
-│       ├── db.go                   # SQLite init, goose migrations on startup
-│       ├── migrations/             # versioned .sql files
-│       ├── queries/                # sqlc .sql query files
-│       └── generated/              # sqlc output (do not edit)
+│   │   ├── sessions/               # parse projects/ JSONL transcripts
+│   │   ├── settings/               # read/write settings.json + ~/.claude.json mcpServers
+│   │   ├── skills/                 # read/write .claude/skills/
+│   │   └── usage/                  # parse stats-cache.json
+│   ├── db/
+│   │   ├── db.go                   # SQLite init, goose migrations on startup
+│   │   ├── migrations/             # versioned .sql files
+│   │   ├── queries/                # sqlc .sql query files
+│   │   └── generated/              # sqlc output (do not edit)
+│   ├── fs/                         # fsnotify watcher (shared)
+│   └── mcp/
+│       └── server.go               # Embedded SSE-based MCP server (port 45789)
 └── frontend/
     ├── src/
     │   ├── lib/
     │   │   ├── api.ts              # Transport abstraction (Wails IPC re-exports)
+    │   │   ├── types.ts            # Hand-maintained types not generated by Wails
     │   │   └── utils.ts
-    │   ├── hooks/                  # TanStack Query hooks per domain (in progress)
-    │   │   ├── usePlans.ts
-    │   │   ├── useSessions.ts
-    │   │   ├── useSkills.ts
+    │   ├── hooks/                  # TanStack Query hooks per domain
     │   │   ├── useCommands.ts
-    │   │   ├── useSettings.ts
-    │   │   ├── useUsageStats.ts
+    │   │   ├── useNotes.ts
+    │   │   ├── usePlans.ts
     │   │   ├── useProjects.ts
-    │   │   └── useTranscript.ts
+    │   │   ├── useSessions.ts
+    │   │   ├── useSettings.ts
+    │   │   ├── useSkills.ts
+    │   │   ├── useTranscript.ts
+    │   │   └── useUsageStats.ts
     │   ├── components/
     │   │   ├── ui/                 # shadcn/ui components
     │   │   └── MarkdownView.tsx
     │   ├── pages/
+    │   │   ├── Commands.tsx
+    │   │   ├── McpServers.tsx
+    │   │   ├── Notes.tsx
     │   │   ├── Plans.tsx
     │   │   ├── Sessions.tsx
     │   │   ├── Settings.tsx
     │   │   ├── Skills.tsx
-    │   │   ├── Commands.tsx
     │   │   └── Usage.tsx
     │   └── main.tsx
     └── index.html
@@ -210,6 +249,8 @@ React pages         (render)
 │  Skills  │                                       │
 │  Commands│                                       │
 │  Usage   │                                       │
+│  Notes   │                                       │
+│  MCP     │                                       │
 └──────────┴───────────────────────────────────────┘
 ```
 
@@ -235,6 +276,12 @@ Master-detail. Left: list of commands with name, description, scope badge, last 
 
 **Usage**
 Full page dashboard. Top row: summary stats cards (total sessions, total messages, total tokens, most used model). Middle: daily activity bar chart. Bottom: model breakdown table.
+
+**Notes**
+Master-detail layout. Left: searchable list of notes with title, word count, date, tags; pinned notes float to top; archived toggle hides archived notes. Right: rendered markdown view with inline rename, pin/archive/delete controls, and a metadata popup (tags, private annotations). Notes are owned by Claudepad and stored in `~/.claudepad/notes/` — they are never auto-deleted. Two capture paths: `/cpad-save-note` slash command in Claude Code, or the built-in `save_note` MCP tool.
+
+**MCP Servers**
+Displays a status banner for the built-in Claudepad MCP server (always running, pre-configured). Below it, a list of user-added MCP servers from `~/.claude.json` with add/edit/delete controls. The config for each server is editable as raw JSON.
 
 ---
 

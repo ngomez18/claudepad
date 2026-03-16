@@ -53,13 +53,20 @@ function CommandRow({
       <div className="flex items-center gap-2">
         <span className="text-[11px] font-mono text-slate-700">{command.filename}.md</span>
         <span className="text-[11px] text-slate-700">· {relativeTime(command.modifiedAt)}</span>
-        <span className={`ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded ${
-          command.scope === 'project'
-            ? 'bg-amber-500/15 text-amber-400/80'
-            : 'bg-white/5 text-slate-600'
-        }`}>
-          {command.scope}
-        </span>
+        <div className="ml-auto flex items-center gap-1">
+          {command.filename.startsWith('cpad-') && (
+            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400/70 border border-blue-500/20">
+              Claudepad
+            </span>
+          )}
+          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+            command.scope === 'project'
+              ? 'bg-amber-500/15 text-amber-400/80'
+              : 'bg-white/5 text-slate-600'
+          }`}>
+            {command.scope}
+          </span>
+        </div>
       </div>
     </button>
   )
