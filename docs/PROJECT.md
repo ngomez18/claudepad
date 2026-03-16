@@ -298,6 +298,49 @@ Displays a status banner for the built-in Claudepad MCP server (always running, 
 
 ---
 
+## Releasing
+
+Claudepad is distributed via Homebrew. The tap repo lives as a submodule at `homebrew-tap/`.
+
+### Steps
+
+1. **Tag and push** — triggers the GitHub Action to build a universal macOS DMG and upload it to GitHub Releases:
+   ```bash
+   git tag v0.1.0
+   git push origin v0.1.0
+   ```
+
+2. **Grab the sha256** from the Action logs (or via CLI):
+   ```bash
+   gh run view --repo ngomez18/claudepad --log | grep "SHA256:"
+   ```
+
+3. **Update the cask** in `homebrew-tap/Casks/claudepad.rb`:
+   - Set `version` to the new version (without the `v` prefix)
+   - Set `sha256` to the hash from step 2
+
+4. **Push the tap:**
+   ```bash
+   cd homebrew-tap
+   git add . && git commit -m "release v0.1.0"
+   git push origin main
+   cd ..
+   git add homebrew-tap && git commit -m "update tap to v0.1.0"
+   git push
+   ```
+
+### Installation (for users)
+
+```bash
+brew tap ngomez18/claudepad
+brew install --cask claudepad
+```
+
+> Claudepad is not code-signed. If macOS blocks the app on first launch, run:
+> `xattr -dr com.apple.quarantine /Applications/claudepad.app`
+
+---
+
 ## Open Questions (post-v1)
 
 - Merged settings/skills view showing global + project inheritance
