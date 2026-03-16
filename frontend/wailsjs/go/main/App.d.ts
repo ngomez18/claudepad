@@ -14,6 +14,8 @@ export function GetCommands(arg1:string):Promise<Array<commands.Command>>;
 
 export function GetPlans():Promise<Array<plans.Plan>>;
 
+export function GetPreservedPlans():Promise<Array<plans.Plan>>;
+
 export function GetProjects():Promise<Array<projects.Project>>;
 
 export function GetSessionTranscript(arg1:string,arg2:string):Promise<Array<sessions.TranscriptMessage>>;

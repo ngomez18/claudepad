@@ -5,6 +5,7 @@ import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'reac
 import { useQueryClient } from '@tanstack/react-query'
 import { SetPlanName, SetPlanMeta, RevealInFinder } from '@/lib/api'
 import { usePlans } from '@/hooks/usePlans'
+import { usePreservedPlans } from '@/hooks/usePreservedPlans'
 import { useProjects } from '@/hooks/useProjects'
 import { relativeTime } from '@/lib/utils'
 import type { plans, projects } from '../../wailsjs/go/models'
@@ -135,13 +136,16 @@ function PlanRow({ plan, selected, onClick }: {
     <button
       onClick={onClick}
       className={`w-full text-left px-4 py-3.5 border-b border-white/4 transition-colors group relative
-        ${plan.archived ? 'opacity-50' : ''}
+        ${plan.archived || plan.preserved ? 'opacity-70' : ''}
         ${selected
-          ? 'bg-blue-500/10 border-l-2 border-l-blue-500/60 pl-3.5'
+          ? plan.preserved
+            ? 'bg-amber-500/8 border-l-2 border-l-amber-500/40 pl-3.5'
+            : 'bg-blue-500/10 border-l-2 border-l-blue-500/60 pl-3.5'
           : 'hover:bg-white/3 border-l-2 border-l-transparent'
         }`}
     >
       <div className="flex items-center gap-1.5 mb-1">
+        {plan.preserved && <Archive className="size-3 text-amber-500/70 shrink-0" />}
         <div className={`flex-1 text-[15px] font-medium leading-snug truncate ${
           selected ? 'text-slate-100' : 'text-slate-300 group-hover:text-slate-200'
         }`}>
@@ -563,6 +567,17 @@ function PlanDetail({ plan, projectList }: {
         </div>
       </div>
 
+      {/* Preserved notice */}
+      {plan.preserved && (
+        <div className="px-8 pt-4 shrink-0">
+          <div className="px-4 py-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <p className="text-[13px] text-amber-400">
+              Removed from Claude Code — Claudepad has a preserved copy.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Content */}
       <SearchableContent className="flex-1 overflow-y-auto" innerClassName="px-8 py-6" contentKey={plan.path}>
         {viewMode === 'rendered' ? (
@@ -606,17 +621,21 @@ export default function PlansPage({
   projects: projects.Project[] | null
 }) {
   const { data: planList, isLoading, refetch } = usePlans()
+  const { data: preservedPlans } = usePreservedPlans()
   const { data: fetchedProjects } = useProjects()
   const resolvedProjectList = projectList ?? fetchedProjects ?? null
 
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
   const [showArchived, setShowArchived] = useState(false)
+  const [showPreserved, setShowPreserved] = useState(false)
 
-  const visiblePlans = planList
-    ? (showArchived ? planList : planList.filter(p => !p.archived))
-    : null
+  const visiblePlans = [
+    ...(planList ? (showArchived ? planList : planList.filter(p => !p.archived)) : []),
+    ...(showPreserved ? (preservedPlans ?? []) : []),
+  ]
 
-  const selected = planList?.find(p => p.path === selectedPath) ?? null
+  const allPlans = [...(planList ?? []), ...(preservedPlans ?? [])]
+  const selected = allPlans.find(p => p.path === selectedPath) ?? null
 
   return (
     <PanelGroup orientation="horizontal" className="h-full overflow-hidden">
@@ -632,6 +651,14 @@ export default function PlansPage({
             >
               Archived
             </button>
+            <button
+              onClick={() => setShowPreserved(s => !s)}
+              className={`text-[11px] transition-colors cursor-pointer ${
+                showPreserved ? 'text-amber-400' : 'text-slate-600 hover:text-slate-400'
+              }`}
+            >
+              Preserved
+            </button>
             <button onClick={() => refetch()} className="text-slate-600 hover:text-slate-400 transition-colors cursor-pointer" title="Refresh">
               <RotateCcw className="size-3" />
             </button>
@@ -639,7 +666,7 @@ export default function PlansPage({
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {!visiblePlans || visiblePlans.length === 0 ? (
+          {visiblePlans.length === 0 ? (
             <EmptyList loading={isLoading} />
           ) : (
             visiblePlans.map(plan => (

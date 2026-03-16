@@ -66,6 +66,13 @@ func (c *Client) Start(ctx context.Context, emit func(event string)) error {
 		return err
 	}
 
+	// Sync live plans to preservation folder on startup (best-effort).
+	go func() {
+		if live, err := plans.ReadPlans(c.db.Queries()); err == nil {
+			_ = plans.SyncToPreserved(live)
+		}
+	}()
+
 	// Auto-discover projects from disk on startup (best-effort).
 	go func() {
 		select {
@@ -135,9 +142,21 @@ func (c *Client) registerWatches(emit func(string)) error {
 
 	if err := c.watcher.WatchDir(
 		filepath.Join(c.claudeDir, "plans"),
-		func() { emit("plans:updated") },
+		func() {
+			if live, err := plans.ReadPlans(c.db.Queries()); err == nil {
+				_ = plans.SyncToPreserved(live)
+			}
+			emit("plans:updated")
+		},
 	); err != nil {
 		return err
+	}
+
+	preservedPlansDir, preservedErr := plans.PreservedDir()
+	if preservedErr == nil {
+		if err := c.watcher.WatchDir(preservedPlansDir, func() { emit("plans:updated") }); err != nil {
+			return err
+		}
 	}
 
 	if err := c.watcher.WatchDir(
@@ -170,6 +189,11 @@ func (c *Client) GetUsageStats() (*StatsCache, error) {
 
 func (c *Client) GetPlans() ([]Plan, error) {
 	return plans.ReadPlans(c.db.Queries())
+}
+
+func (c *Client) GetPreservedPlans() ([]Plan, error) {
+	live, _ := plans.ReadPlans(c.db.Queries())
+	return plans.ReadPreservedPlans(c.db.Queries(), live)
 }
 
 func (c *Client) SetPlanName(path, name string) error {

@@ -431,6 +431,8 @@ Extend sessionStorage to store per-message metadata...
 
 **Correlation**: Plans are standalone - no explicit ID linking to sessions. They're referenced by conversation context.
 
+**Lifecycle**: Plans can disappear from `~/.claude/plans/` (exact trigger not fully documented; may be session-end behaviour or a Claude Code bug). The `cleanupPeriodDays` setting in `settings.json` controls **session transcript** retention only — it does not affect plan files. Claudepad preserves copies in `~/.claudepad/plans/` to guard against this.
+
 **Dev Journal Use**: High-level planning artifacts, architectural decisions.
 
 ---

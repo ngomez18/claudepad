@@ -3,6 +3,7 @@
 // so browser mode only needs to change this file.
 export {
   GetPlans,
+  GetPreservedPlans,
   GetUsageStats,
   GetSessions,
   GetSessionTranscript,

@@ -26,4 +26,5 @@ type Plan struct {
 	Tags      []string `json:"tags"`
 	Notes     string   `json:"notes"`
 	Archived  bool     `json:"archived"`
+	Preserved bool     `json:"preserved"` // true when plan is in ~/.claudepad/plans/ but not ~/.claude/plans/
 }

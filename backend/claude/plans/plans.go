@@ -21,6 +21,134 @@ var (
 	todoCheckedRe   = regexp.MustCompile(`(?m)^[ \t]*- \[[xX]\]`)
 )
 
+// PreservedDir returns the path to Claudepad's plan preservation folder,
+// creating it if it doesn't exist.
+func PreservedDir() (string, error) {
+	return preservedDir()
+}
+
+func preservedDir() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	dir := filepath.Join(home, ".claudepad", "plans")
+	return dir, os.MkdirAll(dir, 0o750)
+}
+
+// canonicalPath converts a preserved-folder path back to its canonical
+// Claude Code path, for use as the file_metadata lookup key.
+// e.g. ~/.claudepad/plans/foo.md → ~/.claude/plans/foo.md
+func canonicalPath(preservedPath string) string {
+	home, _ := os.UserHomeDir()
+	filename := filepath.Base(preservedPath)
+	return filepath.Join(home, ".claude", "plans", filename)
+}
+
+// planFromContent builds a Plan from raw content and file metadata.
+func planFromContent(path, filename, content string, modTime time.Time) Plan {
+	done := len(todoCheckedRe.FindAllString(content, -1))
+	total := done + len(todoUncheckedRe.FindAllString(content, -1))
+	return Plan{
+		Path:       path,
+		Filename:   filename,
+		Content:    content,
+		TodoTotal:  total,
+		TodoDone:   done,
+		ModifiedAt: modTime.UTC().Format(time.RFC3339),
+		WordCount:  len(strings.Fields(content)),
+		Tags:       []string{},
+	}
+}
+
+// sortPlans sorts plans: pinned first, then modifiedAt descending.
+func sortPlans(planList []Plan) {
+	sort.SliceStable(planList, func(i, j int) bool {
+		pi, pj := planList[i], planList[j]
+		if pi.Pinned != pj.Pinned {
+			return pi.Pinned
+		}
+		return pi.ModifiedAt > pj.ModifiedAt
+	})
+}
+
+// SyncToPreserved copies each live plan to ~/.claudepad/plans/ if it is
+// missing or its content has changed.
+func SyncToPreserved(planList []Plan) error {
+	dir, err := preservedDir()
+	if err != nil {
+		return err
+	}
+	return syncToPreservedDir(planList, dir)
+}
+
+func syncToPreservedDir(planList []Plan, dir string) error {
+	for _, p := range planList {
+		dest := filepath.Join(dir, p.Filename+".md")
+		existing, _ := os.ReadFile(dest)
+		if string(existing) == p.Content {
+			continue
+		}
+		if err := os.WriteFile(dest, []byte(p.Content), 0o600); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ReadPreservedPlans reads ~/.claudepad/plans/, excludes files whose canonical
+// path still exists on disk (those are already in livePlans), and enriches the
+// remainder with metadata using the canonical path as the lookup key.
+func ReadPreservedPlans(q *generated.Queries, livePlans []Plan) ([]Plan, error) {
+	dir, err := preservedDir()
+	if err != nil {
+		return nil, err
+	}
+	return readPreservedPlansFrom(q, livePlans, dir)
+}
+
+func readPreservedPlansFrom(q *generated.Queries, livePlans []Plan, dir string) ([]Plan, error) {
+	live := make(map[string]struct{}, len(livePlans))
+	for _, p := range livePlans {
+		live[p.Path] = struct{}{}
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var result []Plan
+	for _, e := range entries {
+		if e.IsDir() || filepath.Ext(e.Name()) != ".md" {
+			continue
+		}
+		canonical := canonicalPath(filepath.Join(dir, e.Name()))
+		if _, isLive := live[canonical]; isLive {
+			continue
+		}
+		content, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		if err != nil {
+			continue
+		}
+		info, _ := e.Info()
+		p := planFromContent(
+			canonical,
+			strings.TrimSuffix(e.Name(), ".md"),
+			string(content),
+			info.ModTime(),
+		)
+		p.Preserved = true
+		result = append(result, p)
+	}
+	enrichPlansFromDB(q, result)
+	sortPlans(result)
+	return result, nil
+}
+
 // ReadPlans reads all plan files from ~/.claude/plans/ and enriches them
 // with metadata stored in the SQLite file_metadata table.
 // Sort order: pinned first → modifiedAt desc.
@@ -34,13 +162,7 @@ func ReadPlans(q *generated.Queries) ([]Plan, error) {
 		return nil, err
 	}
 	enrichPlansFromDB(q, planList)
-	sort.SliceStable(planList, func(i, j int) bool {
-		pi, pj := planList[i], planList[j]
-		if pi.Pinned != pj.Pinned {
-			return pi.Pinned
-		}
-		return pi.ModifiedAt > pj.ModifiedAt
-	})
+	sortPlans(planList)
 	return planList, nil
 }
 
@@ -80,7 +202,7 @@ func readPlansFrom(dir string) ([]Plan, error) {
 		return nil, err
 	}
 
-	var plans []Plan
+	var planList []Plan
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
 			continue
@@ -93,27 +215,19 @@ func readPlansFrom(dir string) ([]Plan, error) {
 		}
 
 		info, _ := e.Info()
-		content := string(data)
-		done := len(todoCheckedRe.FindAllString(content, -1))
-		total := done + len(todoUncheckedRe.FindAllString(content, -1))
-
-		plans = append(plans, Plan{
-			Path:       path,
-			Filename:   strings.TrimSuffix(e.Name(), ".md"),
-			Content:    content,
-			TodoTotal:  total,
-			TodoDone:   done,
-			ModifiedAt: info.ModTime().UTC().Format(time.RFC3339),
-			WordCount:  len(strings.Fields(content)),
-			Tags:       []string{},
-		})
+		planList = append(planList, planFromContent(
+			path,
+			strings.TrimSuffix(e.Name(), ".md"),
+			string(data),
+			info.ModTime(),
+		))
 	}
 
-	sort.Slice(plans, func(i, j int) bool {
-		return plans[i].ModifiedAt > plans[j].ModifiedAt
+	sort.Slice(planList, func(i, j int) bool {
+		return planList[i].ModifiedAt > planList[j].ModifiedAt
 	})
 
-	return plans, nil
+	return planList, nil
 }
 
 // SetPlanName stores a friendly display name for a plan in SQLite.

@@ -1,6 +1,6 @@
 # package plans
 
-Reads markdown plan files from `~/.claude/plans/` and manages their metadata in SQLite.
+Reads markdown plan files from `~/.claude/plans/`, manages their metadata in SQLite, and preserves copies in `~/.claudepad/plans/` so they survive deletion by Claude Code.
 
 ## Source files
 
@@ -72,6 +72,34 @@ notes      TEXT    NOT NULL DEFAULT ''
 archived   INTEGER NOT NULL DEFAULT 0
 ```
 
-## No file writes
+## Plan Preservation
 
-This package never renames, moves, or deletes plan files. Claudepad stores display metadata in SQLite only; `.claude/` files are always the source of truth.
+Claudepad maintains its own preservation folder at `~/.claudepad/plans/`. Every time live plans are read, `SyncToPreserved` copies each plan's file there if it is missing or its content has changed.
+
+When Claude Code removes a plan from `~/.claude/plans/`, the copy in `~/.claudepad/plans/` survives. `ReadPreservedPlans` reads this folder, excludes any files that still exist on disk as live plans, and returns the remainder as `Plan` structs with `Preserved = true`.
+
+### Metadata key consistency
+
+Preserved plans use the canonical Claude Code path (`~/.claude/plans/foo.md`) as their `Plan.Path` and as the `file_metadata` lookup key — even though the file lives in `~/.claudepad/plans/`. This means friendly names, tags, notes, and other metadata set before deletion are still attached to the preserved copy.
+
+### Sync direction
+
+Sync is one-way only: Claude Code → Claudepad. There is no restore-to-disk feature.
+
+### Functions
+
+**`PreservedDir() (string, error)`**
+
+Returns the path to `~/.claudepad/plans/`, creating it if it doesn't exist.
+
+**`SyncToPreserved(plans []Plan) error`**
+
+Copies each live plan to the preservation folder if the file is missing or its content has changed.
+
+**`ReadPreservedPlans(q *generated.Queries, livePlans []Plan) ([]Plan, error)`**
+
+Reads `~/.claudepad/plans/`, excludes files whose canonical path is still live, enriches with metadata, and returns the result sorted by pin → modifiedAt desc.
+
+## No destructive file writes
+
+This package never renames, moves, or deletes plan files. The preservation folder is append/update only; deletion from `~/.cloudpad/plans/` must be done manually. `.claude/` files are always the source of truth for live plans.

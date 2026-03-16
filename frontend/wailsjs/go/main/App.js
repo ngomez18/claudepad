@@ -14,6 +14,10 @@ export function GetPlans() {
   return window['go']['main']['App']['GetPlans']();
 }
 
+export function GetPreservedPlans() {
+  return window['go']['main']['App']['GetPreservedPlans']();
+}
+
 export function GetProjects() {
   return window['go']['main']['App']['GetProjects']();
 }

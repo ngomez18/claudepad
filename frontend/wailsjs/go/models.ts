@@ -43,6 +43,7 @@ export namespace plans {
 	    tags: string[];
 	    notes: string;
 	    archived: boolean;
+	    preserved: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Plan(source);
@@ -63,6 +64,7 @@ export namespace plans {
 	        this.tags = source["tags"];
 	        this.notes = source["notes"];
 	        this.archived = source["archived"];
+	        this.preserved = source["preserved"];
 	    }
 	}
 	export class PlanMeta {

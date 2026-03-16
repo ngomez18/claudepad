@@ -42,6 +42,11 @@ func (a *App) GetPlans() ([]claude.Plan, error) {
 	return a.claude.GetPlans()
 }
 
+// GetPreservedPlans returns plans that exist in ~/.claudepad/plans/ but no longer in ~/.claude/plans/.
+func (a *App) GetPreservedPlans() ([]claude.Plan, error) {
+	return a.claude.GetPreservedPlans()
+}
+
 // GetSessions returns all sessions from ~/.claude/projects/.
 func (a *App) GetSessions() ([]claude.Session, error) {
 	return a.claude.GetSessions()
