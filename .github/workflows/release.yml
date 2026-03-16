@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm install
+
+      - name: Build (macOS universal)
+        run: wails build -platform darwin/universal -clean
+
+      - name: Package as DMG
+        run: |
+          hdiutil create -volname "Claudepad" \
+            -srcfolder "build/bin/claudepad.app" \
+            -ov -format UDZO \
+            "Claudepad.dmg"
+
+      - name: Get SHA256
+        id: sha
+        run: echo "sha256=$(shasum -a 256 Claudepad.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
+
+      - name: Upload DMG to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Claudepad.dmg
+          generate_release_notes: true
+
+      - name: Output SHA256
+        run: |
+          echo "SHA256: ${{ steps.sha.outputs.sha256 }}"
+          echo "Update homebrew-claudepad/Casks/claudepad.rb with:"
+          echo "  version: ${{ github.ref_name }}"
+          echo "  sha256: ${{ steps.sha.outputs.sha256 }}"
