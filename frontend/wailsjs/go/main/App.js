@@ -10,6 +10,10 @@ export function DeleteNote(arg1) {
   return window['go']['main']['App']['DeleteNote'](arg1);
 }
 
+export function GetClaudeMd(arg1) {
+  return window['go']['main']['App']['GetClaudeMd'](arg1);
+}
+
 export function GetCommands(arg1) {
   return window['go']['main']['App']['GetCommands'](arg1);
 }
@@ -88,6 +92,10 @@ export function SetPlanName(arg1, arg2) {
 
 export function SetProjectLastOpened(arg1) {
   return window['go']['main']['App']['SetProjectLastOpened'](arg1);
+}
+
+export function UpdateClaudeMd(arg1, arg2) {
+  return window['go']['main']['App']['UpdateClaudeMd'](arg1, arg2);
 }
 
 export function UpdateCommand(arg1, arg2) {

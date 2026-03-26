@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"claudepad/backend/claude/claudemd"
 	"claudepad/backend/claude/commands"
 	"claudepad/backend/claude/notes"
 	"claudepad/backend/claude/plans"
@@ -19,6 +20,7 @@ import (
 )
 
 // Re-export sub-package types so app.go only needs this package.
+type ClaudeMdFile = claudemd.ClaudeMdFile
 type StatsCache = usage.StatsCache
 type McpServerConfig = settings.McpServerConfig
 type Plan = plans.Plan
@@ -142,6 +144,7 @@ func (c *Client) registerProjectWatches(projectPath string) {
 	_ = c.watcher.Watch(filepath.Join(d, "settings.local.json"), func() { c.emit("settings:updated") })
 	_ = c.watcher.WatchDir(filepath.Join(d, "skills"), func() { c.emit("skills:updated") })
 	_ = c.watcher.WatchDir(filepath.Join(d, "commands"), func() { c.emit("commands:updated") })
+	_ = c.watcher.Watch(filepath.Join(projectPath, "CLAUDE.md"), func() { c.emit("claudemd:updated") })
 }
 
 // registerWatches sets up all file watches for the global ~/.claude/ directory.
@@ -156,6 +159,13 @@ func (c *Client) registerWatches(emit func(string)) error {
 	if err := c.watcher.Watch(
 		filepath.Join(c.claudeDir, "settings.json"),
 		func() { emit("settings:updated") },
+	); err != nil {
+		return err
+	}
+
+	if err := c.watcher.Watch(
+		filepath.Join(c.claudeDir, "CLAUDE.md"),
+		func() { emit("claudemd:updated") },
 	); err != nil {
 		return err
 	}
@@ -306,4 +316,12 @@ func (c *Client) SetNoteTitle(path, title string) error {
 
 func (c *Client) SetNoteMeta(path string, meta NoteMeta) error {
 	return notes.SetNoteMeta(c.db.Queries(), path, meta)
+}
+
+func (c *Client) GetClaudeMd(projectPath string) ([]ClaudeMdFile, error) {
+	return claudemd.Read(projectPath)
+}
+
+func (c *Client) UpdateClaudeMd(path, content string) error {
+	return claudemd.Write(path, content)
 }

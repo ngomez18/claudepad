@@ -57,6 +57,33 @@ SQLite at `~/.claudepad/claudepad.db` stores only enrichment metadata (friendly 
 - **Wails bindings** in `backend/api/app.go` are thin wrappers — all logic lives in the domain packages under `backend/`.
 - **Browser mode** is launched with `claudepad --browser --port 5173`; requires the full REST layer (not just Wails IPC).
 
+## Homebrew Tap (Git Submodule)
+
+The `homebrew-tap/` directory is a git submodule pointing to `https://github.com/ngomez18/homebrew-claudepad`. It contains the Homebrew cask formula used for distributing Claudepad via `brew install`.
+
+**When cloning the repo**, initialize the submodule:
+```bash
+git clone --recurse-submodules <repo-url>
+# or, if already cloned:
+git submodule update --init
+```
+
+**When working in this repo**, the submodule is pinned to a specific commit. Git will show it as a dirty change if the submodule HEAD drifts. To avoid accidentally staging submodule pointer changes, do not `cd homebrew-tap && git pull` unless you intend to update the pinned commit.
+
+**To update the cask formula** (e.g., after a new release):
+```bash
+cd homebrew-tap
+# make changes to the formula file
+git add . && git commit -m "update cask to vX.Y.Z"
+git push origin main
+cd ..
+# back in the main repo, stage the updated submodule pointer
+git add homebrew-tap
+git commit -m "update homebrew-tap submodule to vX.Y.Z"
+```
+
+**If you don't need to touch the cask**, ignore the `homebrew-tap/` directory entirely — it has no effect on building or running Claudepad.
+
 ### Instructions
 - Refer to the files available in `docs/` to understand the project and it's current state
 - Whenever changes are made in `backend/claude`, make sure to also update the corresponding `README.md` files

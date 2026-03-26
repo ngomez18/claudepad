@@ -26,6 +26,8 @@ export {
   SetNoteMeta,
   GetMcpServers,
   SetMcpServers,
+  GetClaudeMd,
+  UpdateClaudeMd,
 } from '../../wailsjs/go/main/App'
 
 export { EventsOn } from '../../wailsjs/runtime/runtime'

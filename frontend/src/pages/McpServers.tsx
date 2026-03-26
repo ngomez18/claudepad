@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2, Server, Zap } from 'lucide-react'
 import { GetMcpServers, SetMcpServers } from '@/lib/api'
+import { useKeyboardSave } from '@/hooks/useKeyboardSave'
 import type { McpServerConfig } from '@/lib/types'
 
 type McpServer = McpServerConfig
@@ -28,6 +29,7 @@ function ServerCard({ name, config, onDelete, onUpdate }: {
   const [draft, setDraft] = useState(JSON.stringify(config, null, 2))
   const [parseErr, setParseErr] = useState('')
 
+  useKeyboardSave(handleSave, editing)
   function handleSave() {
     try {
       const parsed = JSON.parse(draft)

@@ -173,3 +173,13 @@ func (a *App) SetNoteTitle(path, title string) error {
 func (a *App) SetNoteMeta(path string, meta claude.NoteMeta) error {
 	return a.claude.SetNoteMeta(path, meta)
 }
+
+// GetClaudeMd returns CLAUDE.md files for the global and optionally project layer.
+func (a *App) GetClaudeMd(projectPath string) ([]claude.ClaudeMdFile, error) {
+	return a.claude.GetClaudeMd(projectPath)
+}
+
+// UpdateClaudeMd writes markdown content to the given CLAUDE.md path.
+func (a *App) UpdateClaudeMd(path, content string) error {
+	return a.claude.UpdateClaudeMd(path, content)
+}

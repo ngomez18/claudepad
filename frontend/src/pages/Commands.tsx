@@ -3,11 +3,13 @@ import { Terminal, RotateCcw, FolderOpen, Eye, Code2 } from 'lucide-react'
 import MarkdownView from '@/components/MarkdownView'
 import CodeMirror from '@uiw/react-codemirror'
 import { markdown } from '@codemirror/lang-markdown'
+import { EditorView } from '@codemirror/view'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { useQueryClient } from '@tanstack/react-query'
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels'
 import { UpdateCommand, RevealInFinder } from '@/lib/api'
 import { useCommands } from '@/hooks/useCommands'
+import { useKeyboardSave } from '@/hooks/useKeyboardSave'
 import { relativeTime } from '@/lib/utils'
 import type { commands, projects } from '../../wailsjs/go/models'
 
@@ -102,6 +104,7 @@ function CommandDetail({
   }
 
   const isDirty = editorContent !== command.content
+  useKeyboardSave(handleSave, isDirty && viewMode === 'edit')
 
   return (
     <div className="flex flex-col h-full">
@@ -127,7 +130,7 @@ function CommandDetail({
               }`}
             >
               <Eye className="size-3" />
-              Rendered
+              Preview
             </button>
             <button
               onClick={() => setViewMode('edit')}
@@ -152,7 +155,7 @@ function CommandDetail({
               <CodeMirror
                 value={editorContent}
                 height="100%"
-                extensions={[markdown()]}
+                extensions={[markdown(), EditorView.lineWrapping]}
                 theme={oneDark}
                 basicSetup={{ lineNumbers: true, bracketMatching: true }}
                 onChange={setEditorContent}

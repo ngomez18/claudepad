@@ -1,3 +1,26 @@
+export namespace claudemd {
+	
+	export class ClaudeMdFile {
+	    layer: string;
+	    path: string;
+	    content: string;
+	    exists: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ClaudeMdFile(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.layer = source["layer"];
+	        this.path = source["path"];
+	        this.content = source["content"];
+	        this.exists = source["exists"];
+	    }
+	}
+
+}
+
 export namespace commands {
 	
 	export class Command {

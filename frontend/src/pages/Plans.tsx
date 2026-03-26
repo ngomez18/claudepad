@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { FileText, RotateCcw, Eye, Code2, Pencil, Pin, Archive, SlidersHorizontal, ChevronDown, Globe, FolderOpen, Check } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels'
 import { useQueryClient } from '@tanstack/react-query'
 import { SetPlanName, SetPlanMeta, RevealInFinder } from '@/lib/api'
@@ -239,6 +240,16 @@ const markdownComponents: Components = {
   hr: () => <hr className="border-white/10 my-4" />,
   strong: ({ children }) => <strong className="text-slate-100 font-semibold">{children}</strong>,
   em: ({ children }) => <em className="italic">{children}</em>,
+  table: ({ children }) => (
+    <div className="overflow-x-auto mb-4">
+      <table className="w-full text-[13px] border-collapse">{children}</table>
+    </div>
+  ),
+  thead: ({ children }) => <thead className="border-b border-white/10">{children}</thead>,
+  tbody: ({ children }) => <tbody>{children}</tbody>,
+  tr: ({ children }) => <tr className="border-b border-white/5 hover:bg-white/2 transition-colors">{children}</tr>,
+  th: ({ children }) => <th className="text-left px-3 py-2 text-[12px] font-semibold uppercase tracking-wide text-slate-500">{children}</th>,
+  td: ({ children }) => <td className="px-3 py-2 text-slate-300">{children}</td>,
 }
 
 // ── Metadata popup ────────────────────────────────────────────────────────────
@@ -581,7 +592,7 @@ function PlanDetail({ plan, projectList }: {
       {/* Content */}
       <SearchableContent className="flex-1 overflow-y-auto" innerClassName="px-8 py-6" contentKey={plan.path}>
         {viewMode === 'rendered' ? (
-          <ReactMarkdown components={markdownComponents}>{plan.content}</ReactMarkdown>
+          <ReactMarkdown components={markdownComponents} remarkPlugins={[remarkGfm]}>{plan.content}</ReactMarkdown>
         ) : (
           <pre className="text-[14px] leading-relaxed text-slate-300 font-mono whitespace-pre-wrap wrap-break-word">
             {plan.content}
@@ -627,14 +638,10 @@ export default function PlansPage({
 
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
   const [showArchived, setShowArchived] = useState(false)
-  const [showPreserved, setShowPreserved] = useState(false)
-
-  const visiblePlans = [
-    ...(planList ? (showArchived ? planList : planList.filter(p => !p.archived)) : []),
-    ...(showPreserved ? (preservedPlans ?? []) : []),
-  ]
 
   const allPlans = [...(planList ?? []), ...(preservedPlans ?? [])]
+
+  const visiblePlans = allPlans.filter(p => showArchived || !p.archived)
   const selected = allPlans.find(p => p.path === selectedPath) ?? null
 
   return (
@@ -651,15 +658,7 @@ export default function PlansPage({
             >
               Archived
             </button>
-            <button
-              onClick={() => setShowPreserved(s => !s)}
-              className={`text-[11px] transition-colors cursor-pointer ${
-                showPreserved ? 'text-amber-400' : 'text-slate-600 hover:text-slate-400'
-              }`}
-            >
-              Preserved
-            </button>
-            <button onClick={() => refetch()} className="text-slate-600 hover:text-slate-400 transition-colors cursor-pointer" title="Refresh">
+<button onClick={() => refetch()} className="text-slate-600 hover:text-slate-400 transition-colors cursor-pointer" title="Refresh">
               <RotateCcw className="size-3" />
             </button>
           </div>
