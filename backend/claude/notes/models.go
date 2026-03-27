@@ -11,8 +11,10 @@ type Note struct {
 	WordCount  int      `json:"wordCount"`
 	Tags       []string `json:"tags"`
 	Pinned     bool     `json:"pinned"`
-	Notes      string   `json:"notes"`    // private annotations
+	Notes      string   `json:"notes"`      // private annotations
 	Archived   bool     `json:"archived"`
+	FolderID   string   `json:"folderId"`
+	FolderName string   `json:"folderName"` // resolved from folder list at read time
 }
 
 // NoteMeta holds all mutable metadata for a note stored in SQLite.
@@ -21,4 +23,5 @@ type NoteMeta struct {
 	Pinned   bool     `json:"pinned"`
 	Notes    string   `json:"notes"`
 	Archived bool     `json:"archived"`
+	FolderID string   `json:"folderId"`
 }

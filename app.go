@@ -166,9 +166,34 @@ func (a *App) SetNoteTitle(path, title string) error {
 	return a.claude.SetNoteTitle(path, title)
 }
 
-// SetNoteMeta stores metadata for a note (tags, pinned, notes, archived).
+// SetNoteMeta stores metadata for a note (tags, pinned, notes, archived, folderId).
 func (a *App) SetNoteMeta(path string, meta claude.NoteMeta) error {
 	return a.claude.SetNoteMeta(path, meta)
+}
+
+// GetNoteFolders returns all note folders, pinned first then alphabetical.
+func (a *App) GetNoteFolders() ([]claude.Folder, error) {
+	return a.claude.GetNoteFolders()
+}
+
+// CreateNoteFolder creates a new note folder with the given name.
+func (a *App) CreateNoteFolder(name string) (claude.Folder, error) {
+	return a.claude.CreateNoteFolder(name)
+}
+
+// RenameFolder updates the display name of a folder.
+func (a *App) RenameFolder(id, name string) error {
+	return a.claude.RenameFolder(id, name)
+}
+
+// SetFolderPinned updates the pinned state of a folder.
+func (a *App) SetFolderPinned(id string, pinned bool) error {
+	return a.claude.SetFolderPinned(id, pinned)
+}
+
+// DeleteFolder removes a folder and moves its notes to Uncategorized.
+func (a *App) DeleteFolder(id string) error {
+	return a.claude.DeleteFolder(id)
 }
 
 // GetClaudeMd returns CLAUDE.md files for the global and optionally project layer.

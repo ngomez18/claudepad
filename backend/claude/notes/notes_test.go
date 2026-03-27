@@ -35,6 +35,7 @@ func openTestQueries(t *testing.T) *generated.Queries {
 		archived      INTEGER NOT NULL DEFAULT 0,
 		pinned        INTEGER NOT NULL DEFAULT 0,
 		project_id    TEXT    NOT NULL DEFAULT '',
+		folder_id     TEXT    NOT NULL DEFAULT '',
 		created_at    DATETIME DEFAULT (datetime('now')),
 		updated_at    DATETIME DEFAULT (datetime('now'))
 	)`)
@@ -47,7 +48,7 @@ func openTestQueries(t *testing.T) *generated.Queries {
 
 func TestReadNotesFrom_Empty(t *testing.T) {
 	q := openTestQueries(t)
-	got, err := readNotesFrom(q, t.TempDir())
+	got, err := readNotesFrom(q, t.TempDir(), nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -58,7 +59,7 @@ func TestReadNotesFrom_Empty(t *testing.T) {
 
 func TestReadNotesFrom_DirNotExist(t *testing.T) {
 	q := openTestQueries(t)
-	got, err := readNotesFrom(q, filepath.Join(t.TempDir(), "nonexistent"))
+	got, err := readNotesFrom(q, filepath.Join(t.TempDir(), "nonexistent"), nil)
 	if err != nil {
 		t.Fatalf("expected no error for missing dir, got: %v", err)
 	}
@@ -74,7 +75,7 @@ func TestReadNotesFrom_SkipsNonMarkdown(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "other.txt"), []byte("ignore"), 0o600)
 	os.Mkdir(filepath.Join(dir, "subdir"), 0o700)
 
-	got, err := readNotesFrom(q, dir)
+	got, err := readNotesFrom(q, dir, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -94,7 +95,7 @@ project: /Users/user/myproject
 Body content here.
 `)
 
-	got, err := readNotesFrom(q, dir)
+	got, err := readNotesFrom(q, dir, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -118,7 +119,7 @@ func TestReadNotesFrom_FallbackTitle(t *testing.T) {
 	dir := t.TempDir()
 	writeNote(t, dir, "2024-01-15-how-channels-work.md", "# Body\n")
 
-	got, err := readNotesFrom(q, dir)
+	got, err := readNotesFrom(q, dir, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -141,7 +142,7 @@ func TestReadNotesFrom_SortedNewestFirst(t *testing.T) {
 	os.Chtimes(older, old, old)
 	os.Chtimes(newer, now, now)
 
-	got, err := readNotesFrom(q, dir)
+	got, err := readNotesFrom(q, dir, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -163,7 +164,7 @@ func TestSetNoteTitle_RoundTrip(t *testing.T) {
 		t.Fatalf("SetNoteTitle: %v", err)
 	}
 
-	notes, _ := readNotesFrom(q, dir)
+	notes, _ := readNotesFrom(q, dir, nil)
 	if notes[0].Title != "My Friendly Title" {
 		t.Errorf("Title: got %q, want %q", notes[0].Title, "My Friendly Title")
 	}
@@ -172,7 +173,7 @@ func TestSetNoteTitle_RoundTrip(t *testing.T) {
 	if err := SetNoteTitle(q, notePath, ""); err != nil {
 		t.Fatalf("SetNoteTitle clear: %v", err)
 	}
-	notes2, _ := readNotesFrom(q, dir)
+	notes2, _ := readNotesFrom(q, dir, nil)
 	if notes2[0].Title == "My Friendly Title" {
 		t.Error("expected title cleared")
 	}
@@ -194,7 +195,7 @@ func TestSetNoteMeta_RoundTrip(t *testing.T) {
 		t.Fatalf("SetNoteMeta: %v", err)
 	}
 
-	notes, _ := readNotesFrom(q, dir)
+	notes, _ := readNotesFrom(q, dir, nil)
 	n := notes[0]
 	if !n.Pinned {
 		t.Error("expected Pinned=true")
@@ -223,7 +224,7 @@ func TestSetNoteMeta_DoesNotClobberTitle(t *testing.T) {
 		t.Fatalf("SetNoteMeta: %v", err)
 	}
 
-	notes, _ := readNotesFrom(q, dir)
+	notes, _ := readNotesFrom(q, dir, nil)
 	if notes[0].Title != "Keep This Title" {
 		t.Errorf("SetNoteMeta clobbered Title: got %q", notes[0].Title)
 	}

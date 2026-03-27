@@ -10,6 +10,16 @@ import (
 	"database/sql"
 )
 
+const clearFolderFromNotes = `-- name: ClearFolderFromNotes :exec
+UPDATE file_metadata SET folder_id = '', updated_at = datetime('now')
+WHERE folder_id = ? AND file_type = 'note'
+`
+
+func (q *Queries) ClearFolderFromNotes(ctx context.Context, folderID string) error {
+	_, err := q.db.ExecContext(ctx, clearFolderFromNotes, folderID)
+	return err
+}
+
 const clearNoteTitle = `-- name: ClearNoteTitle :exec
 UPDATE file_metadata
 SET friendly_name = NULL, updated_at = datetime('now')
@@ -33,7 +43,7 @@ func (q *Queries) ClearPlanName(ctx context.Context, realPath string) error {
 }
 
 const getNoteMeta = `-- name: GetNoteMeta :one
-SELECT friendly_name, pinned, tags, notes, archived
+SELECT friendly_name, pinned, tags, notes, archived, folder_id
 FROM file_metadata WHERE real_path = ? AND file_type = 'note'
 `
 
@@ -43,6 +53,7 @@ type GetNoteMetaRow struct {
 	Tags         string
 	Notes        string
 	Archived     int64
+	FolderID     string
 }
 
 func (q *Queries) GetNoteMeta(ctx context.Context, realPath string) (GetNoteMetaRow, error) {
@@ -54,6 +65,7 @@ func (q *Queries) GetNoteMeta(ctx context.Context, realPath string) (GetNoteMeta
 		&i.Tags,
 		&i.Notes,
 		&i.Archived,
+		&i.FolderID,
 	)
 	return i, err
 }
@@ -87,13 +99,14 @@ func (q *Queries) GetPlanMeta(ctx context.Context, realPath string) (GetPlanMeta
 }
 
 const upsertNoteMeta = `-- name: UpsertNoteMeta :exec
-INSERT INTO file_metadata (id, real_path, file_type, pinned, tags, notes, archived)
-VALUES (?, ?, 'note', ?, ?, ?, ?)
+INSERT INTO file_metadata (id, real_path, file_type, pinned, tags, notes, archived, folder_id)
+VALUES (?, ?, 'note', ?, ?, ?, ?, ?)
 ON CONFLICT(real_path) DO UPDATE SET
     pinned     = excluded.pinned,
     tags       = excluded.tags,
     notes      = excluded.notes,
     archived   = excluded.archived,
+    folder_id  = excluded.folder_id,
     updated_at = datetime('now')
 `
 
@@ -104,6 +117,7 @@ type UpsertNoteMetaParams struct {
 	Tags     string
 	Notes    string
 	Archived int64
+	FolderID string
 }
 
 func (q *Queries) UpsertNoteMeta(ctx context.Context, arg UpsertNoteMetaParams) error {
@@ -114,6 +128,7 @@ func (q *Queries) UpsertNoteMeta(ctx context.Context, arg UpsertNoteMetaParams) 
 		arg.Tags,
 		arg.Notes,
 		arg.Archived,
+		arg.FolderID,
 	)
 	return err
 }

@@ -37,14 +37,20 @@ Frontmatter is optional. If omitted, the title is derived from the filename.
 | `pinned`     | DB `file_metadata.pinned`                        |
 | `notes`      | DB `file_metadata.notes` (private annotations)  |
 | `archived`   | DB `file_metadata.archived`                      |
+| `folderId`   | DB `file_metadata.folder_id` (empty = uncategorized) |
+| `folderName` | Resolved at read time from folder list passed to `ReadNotes` |
 
 ## Sort order
 
 Pinned first → `modifiedAt` descending.
 
+## Folder assignment
+
+Notes are grouped into logical folders managed by `backend/claude/folders`. A note's folder is stored in `file_metadata.folder_id` (empty string = uncategorized). `ReadNotes` accepts a `map[folderID]folderName` index to resolve `folderName` without an extra DB round-trip.
+
 ## SQLite storage
 
-Reuses the `file_metadata` table with `file_type = 'note'`. No migrations needed beyond the initial schema.
+Reuses the `file_metadata` table with `file_type = 'note'`. The `folder_id` column was added via the `folder_support` migration.
 
 ## Key functions
 
@@ -53,7 +59,7 @@ Reuses the `file_metadata` table with `file_type = 'note'`. No migrations needed
 | `NotesDir()` | Returns `~/.claudepad/notes/`, creating if absent |
 | `ReadNotes(q)` | Reads all note files, enriches from DB, sorts |
 | `SetNoteTitle(q, path, title)` | Upserts `friendly_name` in DB; empty string clears |
-| `SetNoteMeta(q, path, meta)` | Upserts tags, pinned, notes, archived |
+| `SetNoteMeta(q, path, meta)` | Upserts tags, pinned, notes, archived, folderId |
 | `InstallSaveNoteCommand()` | Writes `~/.claude/commands/cpad-save-note.md` if absent |
 
 ## Capture mechanisms

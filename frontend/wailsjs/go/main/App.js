@@ -6,6 +6,14 @@ export function AddProject(arg1) {
   return window['go']['main']['App']['AddProject'](arg1);
 }
 
+export function CreateNoteFolder(arg1) {
+  return window['go']['main']['App']['CreateNoteFolder'](arg1);
+}
+
+export function DeleteFolder(arg1) {
+  return window['go']['main']['App']['DeleteFolder'](arg1);
+}
+
 export function DeleteNote(arg1) {
   return window['go']['main']['App']['DeleteNote'](arg1);
 }
@@ -20,6 +28,10 @@ export function GetCommands(arg1) {
 
 export function GetMcpServers() {
   return window['go']['main']['App']['GetMcpServers']();
+}
+
+export function GetNoteFolders() {
+  return window['go']['main']['App']['GetNoteFolders']();
 }
 
 export function GetNotes() {
@@ -66,12 +78,20 @@ export function RemoveProject(arg1) {
   return window['go']['main']['App']['RemoveProject'](arg1);
 }
 
+export function RenameFolder(arg1, arg2) {
+  return window['go']['main']['App']['RenameFolder'](arg1, arg2);
+}
+
 export function ResumeSession(arg1, arg2) {
   return window['go']['main']['App']['ResumeSession'](arg1, arg2);
 }
 
 export function RevealInFinder(arg1) {
   return window['go']['main']['App']['RevealInFinder'](arg1);
+}
+
+export function SetFolderPinned(arg1, arg2) {
+  return window['go']['main']['App']['SetFolderPinned'](arg1, arg2);
 }
 
 export function SetMcpServers(arg1) {

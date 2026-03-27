@@ -156,15 +156,16 @@ func filenameToTitle(filename string) string {
 // ReadNotes reads all note files from ~/.claudepad/notes/ and enriches them
 // with metadata stored in the SQLite file_metadata table.
 // Sort order: pinned first → modifiedAt desc.
-func ReadNotes(q *generated.Queries) ([]Note, error) {
+// folderIndex maps folder ID → name for resolving FolderName; pass nil to skip resolution.
+func ReadNotes(q *generated.Queries, folderIndex map[string]string) ([]Note, error) {
 	dir, err := notesDir()
 	if err != nil {
 		return nil, err
 	}
-	return readNotesFrom(q, dir)
+	return readNotesFrom(q, dir, folderIndex)
 }
 
-func readNotesFrom(q *generated.Queries, dir string) ([]Note, error) {
+func readNotesFrom(q *generated.Queries, dir string, folderIndex map[string]string) ([]Note, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -188,13 +189,14 @@ func readNotesFrom(q *generated.Queries, dir string) ([]Note, error) {
 		noteList = append(noteList, note)
 	}
 
-	enrichNotesFromDB(q, noteList)
+	enrichNotesFromDB(q, noteList, folderIndex)
 	sortNotes(noteList)
 	return noteList, nil
 }
 
 // enrichNotesFromDB populates metadata fields on each note from the DB.
-func enrichNotesFromDB(q *generated.Queries, noteList []Note) {
+// folderIndex maps folder ID → name; pass nil to skip FolderName resolution.
+func enrichNotesFromDB(q *generated.Queries, noteList []Note, folderIndex map[string]string) {
 	ctx := context.Background()
 	for i := range noteList {
 		row, err := q.GetNoteMeta(ctx, noteList[i].Path)
@@ -207,6 +209,10 @@ func enrichNotesFromDB(q *generated.Queries, noteList []Note) {
 		noteList[i].Pinned = row.Pinned != 0
 		noteList[i].Notes = row.Notes
 		noteList[i].Archived = row.Archived != 0
+		noteList[i].FolderID = row.FolderID
+		if folderIndex != nil {
+			noteList[i].FolderName = folderIndex[row.FolderID]
+		}
 
 		var tags []string
 		if row.Tags != "" {
@@ -271,5 +277,6 @@ func SetNoteMeta(q *generated.Queries, path string, meta NoteMeta) error {
 		Tags:     string(tagsJSON),
 		Notes:    meta.Notes,
 		Archived: archivedInt,
+		FolderID: meta.FolderID,
 	})
 }

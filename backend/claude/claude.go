@@ -7,6 +7,7 @@ import (
 
 	"claudepad/backend/claude/claudemd"
 	"claudepad/backend/claude/commands"
+	"claudepad/backend/claude/folders"
 	"claudepad/backend/claude/notes"
 	"claudepad/backend/claude/plans"
 	"claudepad/backend/claude/projects"
@@ -33,6 +34,7 @@ type Command = commands.Command
 type PlanMeta = plans.PlanMeta
 type Note = notes.Note
 type NoteMeta = notes.NoteMeta
+type Folder = folders.Folder
 
 // Client provides access to Claude Code's local data files.
 // It owns the file watcher and all path resolution — callers never touch paths directly.
@@ -311,7 +313,33 @@ func (c *Client) DeleteNote(path string) error {
 }
 
 func (c *Client) GetNotes() ([]Note, error) {
-	return notes.ReadNotes(c.db.Queries())
+	q := c.db.Queries()
+	folderList, _ := folders.ReadFolders(q, "note")
+	index := make(map[string]string, len(folderList))
+	for _, f := range folderList {
+		index[f.ID] = f.Name
+	}
+	return notes.ReadNotes(q, index)
+}
+
+func (c *Client) GetNoteFolders() ([]Folder, error) {
+	return folders.ReadFolders(c.db.Queries(), "note")
+}
+
+func (c *Client) CreateNoteFolder(name string) (Folder, error) {
+	return folders.CreateFolder(c.db.Queries(), "note", name)
+}
+
+func (c *Client) RenameFolder(id, name string) error {
+	return folders.RenameFolder(c.db.Queries(), id, name)
+}
+
+func (c *Client) SetFolderPinned(id string, pinned bool) error {
+	return folders.SetFolderPinned(c.db.Queries(), id, pinned)
+}
+
+func (c *Client) DeleteFolder(id string) error {
+	return folders.DeleteFolder(c.db.Queries(), id)
 }
 
 func (c *Client) SetNoteTitle(path, title string) error {

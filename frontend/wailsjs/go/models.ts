@@ -50,6 +50,29 @@ export namespace commands {
 
 }
 
+export namespace folders {
+	
+	export class Folder {
+	    id: string;
+	    entityType: string;
+	    name: string;
+	    pinned: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Folder(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.entityType = source["entityType"];
+	        this.name = source["name"];
+	        this.pinned = source["pinned"];
+	    }
+	}
+
+}
+
 export namespace notes {
 	
 	export class Note {
@@ -64,6 +87,8 @@ export namespace notes {
 	    pinned: boolean;
 	    notes: string;
 	    archived: boolean;
+	    folderId: string;
+	    folderName: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Note(source);
@@ -82,6 +107,8 @@ export namespace notes {
 	        this.pinned = source["pinned"];
 	        this.notes = source["notes"];
 	        this.archived = source["archived"];
+	        this.folderId = source["folderId"];
+	        this.folderName = source["folderName"];
 	    }
 	}
 	export class NoteMeta {
@@ -89,6 +116,7 @@ export namespace notes {
 	    pinned: boolean;
 	    notes: string;
 	    archived: boolean;
+	    folderId: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new NoteMeta(source);
@@ -100,6 +128,7 @@ export namespace notes {
 	        this.pinned = source["pinned"];
 	        this.notes = source["notes"];
 	        this.archived = source["archived"];
+	        this.folderId = source["folderId"];
 	    }
 	}
 

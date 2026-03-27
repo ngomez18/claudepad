@@ -27,6 +27,15 @@ type FileMetadatum struct {
 	UpdatedAt    sql.NullTime
 	Pinned       int64
 	ProjectID    string
+	FolderID     string
+}
+
+type Folder struct {
+	ID         string
+	EntityType string
+	Name       string
+	Pinned     int64
+	CreatedAt  sql.NullTime
 }
 
 type Project struct {
