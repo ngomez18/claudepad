@@ -1,5 +1,6 @@
 import React from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import type { Components } from 'react-markdown'
 
 const markdownComponents: Components = {
@@ -46,6 +47,16 @@ const markdownComponents: Components = {
   hr: () => <hr className="border-white/10 my-4" />,
   strong: ({ children }) => <strong className="text-slate-100 font-semibold">{children}</strong>,
   em: ({ children }) => <em className="italic">{children}</em>,
+  table: ({ children }) => (
+    <div className="overflow-x-auto mb-4">
+      <table className="w-full text-[13px] border-collapse">{children}</table>
+    </div>
+  ),
+  thead: ({ children }) => <thead className="border-b border-white/10">{children}</thead>,
+  tbody: ({ children }) => <tbody>{children}</tbody>,
+  tr: ({ children }) => <tr className="border-b border-white/5 hover:bg-white/2 transition-colors">{children}</tr>,
+  th: ({ children }) => <th className="text-left px-3 py-2 text-[12px] font-semibold uppercase tracking-wide text-slate-500">{children}</th>,
+  td: ({ children }) => <td className="px-3 py-2 text-slate-300">{children}</td>,
 }
 
 function stripFrontmatter(content: string): string {
@@ -53,5 +64,9 @@ function stripFrontmatter(content: string): string {
 }
 
 export default function MarkdownView({ content }: { content: string }) {
-  return <ReactMarkdown components={markdownComponents}>{stripFrontmatter(content)}</ReactMarkdown>
+  return (
+    <ReactMarkdown components={markdownComponents} remarkPlugins={[remarkGfm]}>
+      {stripFrontmatter(content)}
+    </ReactMarkdown>
+  )
 }

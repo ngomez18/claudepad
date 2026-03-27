@@ -1,11 +1,28 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Brain, RotateCcw, FolderOpen, Eye, Code2 } from 'lucide-react'
 import MarkdownView from '@/components/MarkdownView'
+import CodeMirror from '@uiw/react-codemirror'
+import { markdown } from '@codemirror/lang-markdown'
+import { EditorView } from '@codemirror/view'
+import { oneDark } from '@codemirror/theme-one-dark'
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels'
-import { RevealInFinder } from '@/lib/api'
+import { useQueryClient } from '@tanstack/react-query'
+import { UpdateSkill, RevealInFinder } from '@/lib/api'
 import { useSkills } from '@/hooks/useSkills'
+import { useKeyboardSave } from '@/hooks/useKeyboardSave'
 import { relativeTime } from '@/lib/utils'
 import type { skills, projects } from '../../wailsjs/go/models'
+
+// ── Status badge ──────────────────────────────────────────────────────────────
+
+type Status = { kind: 'idle' } | { kind: 'saving' } | { kind: 'saved' } | { kind: 'error'; msg: string }
+
+function StatusBadge({ status }: { status: Status }) {
+  if (status.kind === 'idle') return null
+  if (status.kind === 'saving') return <span className="text-xs text-slate-500">Saving…</span>
+  if (status.kind === 'saved') return <span className="text-xs text-emerald-400">Saved</span>
+  return <span className="text-xs text-red-400">{status.msg}</span>
+}
 
 // ── List row ──────────────────────────────────────────────────────────────────
 
@@ -62,7 +79,31 @@ function SkillRow({
 // ── Detail panel ──────────────────────────────────────────────────────────────
 
 function SkillDetail({ skill }: { skill: skills.Skill }) {
-  const [viewMode, setViewMode] = useState<'rendered' | 'raw'>('rendered')
+  const queryClient = useQueryClient()
+  const [viewMode, setViewMode] = useState<'preview' | 'edit'>('preview')
+  const [editorContent, setEditorContent] = useState(skill.content)
+  const [status, setStatus] = useState<Status>({ kind: 'idle' })
+
+  useEffect(() => {
+    setEditorContent(skill.content)
+    setStatus({ kind: 'idle' })
+    setViewMode('preview')
+  }, [skill.path, skill.content])
+
+  async function handleSave() {
+    setStatus({ kind: 'saving' })
+    try {
+      await UpdateSkill(skill.path, editorContent)
+      queryClient.invalidateQueries({ queryKey: ['skills'] })
+      setStatus({ kind: 'saved' })
+      setTimeout(() => setStatus({ kind: 'idle' }), 2000)
+    } catch (err) {
+      setStatus({ kind: 'error', msg: String(err) })
+    }
+  }
+
+  const isDirty = editorContent !== skill.content
+  useKeyboardSave(handleSave, isDirty && viewMode === 'edit')
 
   return (
     <div className="flex flex-col h-full">
@@ -82,41 +123,60 @@ function SkillDetail({ skill }: { skill: skills.Skill }) {
           <div className="w-px h-4 bg-white/8 mx-0.5" />
           <div className="flex items-center gap-0.5 bg-white/4 rounded-md p-0.5">
             <button
-              onClick={() => setViewMode('rendered')}
+              onClick={() => setViewMode('preview')}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] transition-colors ${
-                viewMode === 'rendered' ? 'bg-white/10 text-slate-200' : 'text-slate-600 hover:text-slate-400'
+                viewMode === 'preview' ? 'bg-white/10 text-slate-200' : 'text-slate-600 hover:text-slate-400'
               }`}
             >
               <Eye className="size-3" />
-              Rendered
+              Preview
             </button>
             <button
-              onClick={() => setViewMode('raw')}
+              onClick={() => setViewMode('edit')}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] transition-colors ${
-                viewMode === 'raw' ? 'bg-white/10 text-slate-200' : 'text-slate-600 hover:text-slate-400'
+                viewMode === 'edit' ? 'bg-white/10 text-slate-200' : 'text-slate-600 hover:text-slate-400'
               }`}
             >
               <Code2 className="size-3" />
-              Raw
+              Edit
             </button>
           </div>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto">
-        <div className="px-8 py-6">
+
+      {viewMode === 'preview' ? (
+        <div className="flex-1 overflow-y-auto px-8 py-6">
           {skill.content ? (
-            viewMode === 'rendered' ? (
-              <MarkdownView content={skill.content} />
-            ) : (
-              <pre className="text-[14px] leading-relaxed text-slate-300 font-mono whitespace-pre-wrap wrap-break-word">
-                {skill.content}
-              </pre>
-            )
+            <MarkdownView content={editorContent} />
           ) : (
             <p className="text-sm text-slate-600">No SKILL.md found in this directory.</p>
           )}
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-col flex-1 min-h-0 gap-3 p-6">
+          <div className="flex-1 min-h-0 rounded-xl overflow-hidden border border-white/5">
+            <CodeMirror
+              value={editorContent}
+              height="100%"
+              extensions={[markdown(), EditorView.lineWrapping]}
+              theme={oneDark}
+              basicSetup={{ lineNumbers: true, bracketMatching: true }}
+              onChange={setEditorContent}
+              style={{ height: '100%' }}
+            />
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              onClick={handleSave}
+              disabled={!isDirty || status.kind === 'saving'}
+              className="px-4 py-1.5 rounded-lg text-sm font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            >
+              Save
+            </button>
+            <StatusBadge status={status} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

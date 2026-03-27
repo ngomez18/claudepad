@@ -42,6 +42,8 @@ export function PickProjectDir():Promise<string>;
 
 export function RemoveProject(arg1:string):Promise<void>;
 
+export function ResumeSession(arg1:string,arg2:string):Promise<void>;
+
 export function RevealInFinder(arg1:string):Promise<void>;
 
 export function SetMcpServers(arg1:Record<string, settings.McpServerConfig>):Promise<void>;
@@ -61,3 +63,5 @@ export function UpdateClaudeMd(arg1:string,arg2:string):Promise<void>;
 export function UpdateCommand(arg1:string,arg2:string):Promise<void>;
 
 export function UpdateSettings(arg1:string,arg2:string):Promise<void>;
+
+export function UpdateSkill(arg1:string,arg2:string):Promise<void>;

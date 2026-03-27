@@ -294,6 +294,10 @@ func (c *Client) UpdateCommand(path, content string) error {
 	return commands.WriteCommand(path, content)
 }
 
+func (c *Client) UpdateSkill(path, content string) error {
+	return skills.WriteSkill(path, content)
+}
+
 func (c *Client) GetMcpServers() (map[string]McpServerConfig, error) {
 	return settings.ReadMcpServers()
 }

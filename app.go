@@ -2,10 +2,9 @@ package main
 
 import (
 	"context"
-	"os/exec"
-	goruntime "runtime"
 
 	"claudepad/backend/claude"
+	"claudepad/backend/shell"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -89,16 +88,9 @@ func (a *App) PickProjectDir() string {
 	return path
 }
 
-// RevealInFinder reveals a file or directory in the OS file manager.
+// RevealInFinder reveals a file or directory in Finder.
 func (a *App) RevealInFinder(path string) error {
-	switch goruntime.GOOS {
-	case "darwin":
-		return exec.Command("open", "-R", path).Run()
-	case "windows":
-		return exec.Command("explorer", "/select,"+path).Run()
-	default:
-		return exec.Command("xdg-open", path).Run()
-	}
+	return shell.OpenDir(path)
 }
 
 // SetProjectLastOpened updates the last_opened timestamp for a project.
@@ -131,6 +123,11 @@ func (a *App) GetCommands(projectPath string) ([]claude.Command, error) {
 // UpdateCommand writes updated content to the given command file path.
 func (a *App) UpdateCommand(path, content string) error {
 	return a.claude.UpdateCommand(path, content)
+}
+
+// UpdateSkill writes updated content to the given SKILL.md path.
+func (a *App) UpdateSkill(path, content string) error {
+	return a.claude.UpdateSkill(path, content)
 }
 
 // SetPlanName stores a friendly display name for a plan. Pass empty string to clear.
@@ -182,4 +179,10 @@ func (a *App) GetClaudeMd(projectPath string) ([]claude.ClaudeMdFile, error) {
 // UpdateClaudeMd writes markdown content to the given CLAUDE.md path.
 func (a *App) UpdateClaudeMd(path, content string) error {
 	return a.claude.UpdateClaudeMd(path, content)
+}
+
+// ResumeSession opens the user's preferred terminal and runs `claude --resume <sessionID>`
+// in the session's working directory.
+func (a *App) ResumeSession(cwd, sessionID string) error {
+	return shell.OpenWithCommand(cwd, "claude --resume "+sessionID)
 }

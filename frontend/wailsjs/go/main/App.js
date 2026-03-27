@@ -66,6 +66,10 @@ export function RemoveProject(arg1) {
   return window['go']['main']['App']['RemoveProject'](arg1);
 }
 
+export function ResumeSession(arg1, arg2) {
+  return window['go']['main']['App']['ResumeSession'](arg1, arg2);
+}
+
 export function RevealInFinder(arg1) {
   return window['go']['main']['App']['RevealInFinder'](arg1);
 }
@@ -104,4 +108,8 @@ export function UpdateCommand(arg1, arg2) {
 
 export function UpdateSettings(arg1, arg2) {
   return window['go']['main']['App']['UpdateSettings'](arg1, arg2);
+}
+
+export function UpdateSkill(arg1, arg2) {
+  return window['go']['main']['App']['UpdateSkill'](arg1, arg2);
 }

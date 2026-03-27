@@ -1,12 +1,13 @@
 package skills
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"time"
 
-	"claudepad/backend/claude/frontmatter"
+	"claudepad/backend/frontmatter"
 )
 
 // ReadSkills reads skill directories from ~/.claude/skills/ (global) and,
@@ -37,6 +38,15 @@ func ReadSkills(projectPath string) ([]Skill, error) {
 		return merged[i].ModifiedAt > merged[j].ModifiedAt
 	})
 	return merged, nil
+}
+
+// WriteSkill writes content to the given SKILL.md path.
+// The path must end in SKILL.md and reside inside a skills directory.
+func WriteSkill(path, content string) error {
+	if filepath.Base(path) != "SKILL.md" {
+		return fmt.Errorf("path must point to a SKILL.md file")
+	}
+	return os.WriteFile(path, []byte(content), 0o644)
 }
 
 func readSkillsFrom(dir, scope string) ([]Skill, error) {

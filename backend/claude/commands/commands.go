@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"claudepad/backend/claude/frontmatter"
+	"claudepad/backend/frontmatter"
 )
 
 // ReadCommands reads command files from ~/.claude/commands/ (global) and,

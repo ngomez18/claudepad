@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import MarkdownView from '@/components/MarkdownView'
 import SearchableContent from '@/components/SearchableContent'
-import { MessageSquare, RotateCcw, GitBranch, Clock, Hash, Wrench } from 'lucide-react'
+import { MessageSquare, MessageCircle, RotateCcw, GitBranch, Clock, Wrench, Terminal, Check } from 'lucide-react'
+import { ResumeSession } from '@/lib/api'
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels'
 import { useSessions } from '@/hooks/useSessions'
 import { useTranscript } from '@/hooks/useTranscript'
@@ -66,7 +67,7 @@ function SessionRow({
       )}
 
       {/* Meta row */}
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-3 flex-wrap">
         <span className="text-[12px] text-slate-600 font-mono">
           {decodeProjectName(session.projectPath)}
         </span>
@@ -77,8 +78,9 @@ function SessionRow({
           </span>
         )}
         {session.messageCount > 0 && (
-          <span className="text-[11px] text-slate-700 tabular-nums">
-            {session.messageCount} msg{session.messageCount !== 1 ? 's' : ''}
+          <span className="flex items-center gap-1 text-[11px] text-slate-700 tabular-nums">
+            <MessageCircle className="size-2.5" />
+            {session.messageCount}
           </span>
         )}
         <span className="text-[12px] text-slate-600 ml-auto">
@@ -101,17 +103,55 @@ function TranscriptView({
   loading: boolean
 }) {
   const bottomRef = useRef<HTMLDivElement>(null)
+  const [resumeState, setResumeState] = useState<'idle' | 'opened' | 'copied'>('idle')
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'instant' })
   }, [transcript])
 
+  // Reset resume feedback state when session changes.
+  useEffect(() => { setResumeState('idle') }, [session.sessionId])
+
+  async function handleResume() {
+    if (!session.cwd) return
+    try {
+      await ResumeSession(session.cwd, session.sessionId)
+      setResumeState('opened')
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      setResumeState(msg.includes('copied_to_clipboard') ? 'copied' : 'idle')
+    }
+    setTimeout(() => setResumeState('idle'), 2000)
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="px-6 py-4 border-b border-white/5 shrink-0">
-        <div className="text-[15px] font-semibold text-slate-100 leading-snug truncate mb-1.5">
-          {sessionLabel(session)}
+        <div className="flex items-start justify-between gap-3 mb-1.5">
+          <div className="text-[15px] font-semibold text-slate-100 leading-snug truncate">
+            {sessionLabel(session)}
+          </div>
+          {session.cwd && (
+            <button
+              onClick={handleResume}
+              className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors cursor-pointer ${
+                resumeState === 'copied'
+                  ? 'bg-amber-500/15 text-amber-400'
+                  : resumeState === 'opened'
+                  ? 'bg-green-500/15 text-green-400'
+                  : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200'
+              }`}
+              title={`claude --resume ${session.sessionId}`}
+            >
+              {resumeState === 'opened' || resumeState === 'copied' ? (
+                <Check className="size-3" />
+              ) : (
+                <Terminal className="size-3" />
+              )}
+              {resumeState === 'copied' ? 'Copied' : resumeState === 'opened' ? 'Opened' : 'Resume'}
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           {session.cwd && (
@@ -133,7 +173,7 @@ function TranscriptView({
           )}
           {session.messageCount > 0 && (
             <span className="flex items-center gap-1 text-[11px] text-slate-600">
-              <Hash className="size-3" />
+              <MessageCircle className="size-3" />
               {session.messageCount} messages
             </span>
           )}
