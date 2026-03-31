@@ -54,9 +54,23 @@ jobs:
           files: Claudepad.dmg
           generate_release_notes: true
 
-      - name: Output SHA256
-        run: |
-          echo "SHA256: ${{ steps.sha.outputs.sha256 }}"
-          echo "Update homebrew-claudepad/Casks/claudepad.rb with:"
-          echo "  version: ${{ github.ref_name }}"
-          echo "  sha256: ${{ steps.sha.outputs.sha256 }}"
+      - name: Checkout Homebrew tap
+        uses: actions/checkout@v4
+        with:
+          repository: ngomez18/homebrew-claudepad
+          token: ${{ secrets.TAP_GITHUB_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update cask formula
+        env:
+          VERSION: ${{ github.ref_name }}
+          SHA256: ${{ steps.sha.outputs.sha256 }}
+        run: bash scripts/update-cask.sh
+
+      - name: Commit and push cask update
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "release ${{ github.ref_name }}"
+          repository: homebrew-tap
+          commit_user_name: github-actions[bot]
+          commit_user_email: github-actions[bot]@users.noreply.github.com
