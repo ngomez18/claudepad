@@ -25,6 +25,7 @@ import NotesPage from '@/pages/Notes'
 import McpServersPage from '@/pages/McpServers'
 import { AddProject, PickProjectDir } from '@/lib/api'
 import { useProjects } from '@/hooks/useProjects'
+import { useClickOutside } from '@/hooks/useClickOutside'
 import type { projects } from '../wailsjs/go/models'
 
 interface NavItem {
@@ -54,14 +55,7 @@ function ProjectPicker({ projectId, onProjectChange, projectList, onAddProject }
   const ref = useRef<HTMLDivElement>(null)
   const active = projectList?.find(p => p.id === projectId) ?? null
 
-  useEffect(() => {
-    if (!open) return
-    function onDown(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
-  }, [open])
+  useClickOutside(ref, () => setOpen(false), open)
 
   return (
     <div ref={ref} className="relative px-3">
@@ -160,10 +154,13 @@ function Sidebar({ active, onNavigate, projectId, onProjectChange, projectList }
   )
 }
 
-function PageContent({ section, activeProject, projectList }: {
+function PageContent({ section, activeProject, projectList, onViewPlan, pendingPlanSlug, onPlanSlugConsumed }: {
   section: string
   activeProject: projects.Project | null
   projectList: projects.Project[] | null
+  onViewPlan: (slug: string) => void
+  pendingPlanSlug: string | null
+  onPlanSlugConsumed: () => void
 }) {
   const item = NAV_ITEMS.find(n => n.id === section)
 
@@ -181,11 +178,11 @@ function PageContent({ section, activeProject, projectList }: {
       )}
 
       {section === 'plans' ? (
-        <PlansPage projects={projectList} />
+        <PlansPage projects={projectList} initialPlanSlug={pendingPlanSlug} onPlanSlugConsumed={onPlanSlugConsumed} />
       ) : section === 'notes' ? (
         <NotesPage />
       ) : section === 'sessions' ? (
-        <SessionsPage activeProject={activeProject} />
+        <SessionsPage activeProject={activeProject} onViewPlan={onViewPlan} />
       ) : section === 'settings' ? (
         <SettingsPage activeProject={activeProject} />
       ) : section === 'skills' ? (
@@ -206,6 +203,7 @@ function PageContent({ section, activeProject, projectList }: {
 export default function App() {
   const [activeSection, setActiveSection] = useState('plans')
   const [projectId, setProjectId] = useState<string>('')
+  const [pendingPlanSlug, setPendingPlanSlug] = useState<string | null>(null)
   const { data: projectList } = useProjects()
 
   // Default to the global project (first in the list) once loaded.
@@ -217,6 +215,11 @@ export default function App() {
 
   const activeProject = projectList?.find(p => p.id === projectId) ?? null
 
+  function handleViewPlan(slug: string) {
+    setPendingPlanSlug(slug)
+    setActiveSection('plans')
+  }
+
   return (
     <div className="flex h-screen overflow-hidden dark">
       <Sidebar
@@ -226,7 +229,14 @@ export default function App() {
         onProjectChange={setProjectId}
         projectList={projectList ?? null}
       />
-      <PageContent section={activeSection} activeProject={activeProject} projectList={projectList ?? null} />
+      <PageContent
+        section={activeSection}
+        activeProject={activeProject}
+        projectList={projectList ?? null}
+        onViewPlan={handleViewPlan}
+        pendingPlanSlug={pendingPlanSlug}
+        onPlanSlugConsumed={() => setPendingPlanSlug(null)}
+      />
     </div>
   )
 }

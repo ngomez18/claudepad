@@ -2,6 +2,7 @@ import React from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { Components } from 'react-markdown'
+import SearchableContent from '@/components/SearchableContent'
 
 const markdownComponents: Components = {
   h1: ({ children }) => <h1 className="text-xl font-semibold text-slate-100 mb-3 mt-6 first:mt-0">{children}</h1>,
@@ -63,10 +64,26 @@ function stripFrontmatter(content: string): string {
   return content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '')
 }
 
-export default function MarkdownView({ content }: { content: string }) {
+export default function MarkdownView({
+  content,
+  contentKey,
+  className,
+  innerClassName,
+}: {
+  content: string
+  contentKey?: string
+  className?: string
+  innerClassName?: string
+}) {
   return (
-    <ReactMarkdown components={markdownComponents} remarkPlugins={[remarkGfm]}>
-      {stripFrontmatter(content)}
-    </ReactMarkdown>
+    <SearchableContent
+      className={className}
+      innerClassName={innerClassName}
+      contentKey={contentKey ?? content}
+    >
+      <ReactMarkdown components={markdownComponents} remarkPlugins={[remarkGfm]}>
+        {stripFrontmatter(content)}
+      </ReactMarkdown>
+    </SearchableContent>
   )
 }

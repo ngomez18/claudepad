@@ -1,89 +1,25 @@
 import { useState, useEffect, useRef } from 'react'
-import { createPortal } from 'react-dom'
 import {
   StickyNote, RotateCcw, Pin, Archive, SlidersHorizontal, Pencil, Trash2,
   ChevronRight, ChevronDown, FolderPlus, FolderOpen, Folder as FolderIcon,
 } from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { SetNoteTitle, SetNoteMeta, DeleteNote, GetNoteFolders, CreateNoteFolder, RenameFolder, SetFolderPinned, DeleteFolder } from '@/lib/api'
 import { useNotes } from '@/hooks/useNotes'
-import { relativeTime } from '@/lib/utils'
+import { relativeTime, absoluteTime } from '@/lib/utils'
 import type { notes, folders } from '../../wailsjs/go/models'
-import type { Components } from 'react-markdown'
-import SearchableContent from '@/components/SearchableContent'
+import MarkdownView from '@/components/MarkdownView'
+import ConfirmModal from '@/components/ConfirmModal'
+import StatusBadge from '@/components/StatusBadge'
+import EmptyState from '@/components/EmptyState'
+import { useClickOutside } from '@/hooks/useClickOutside'
+import type { Status } from '@/components/StatusBadge'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function absoluteTime(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
-}
-
 function readTime(wordCount: number): number {
   return Math.max(1, Math.ceil(wordCount / 200))
-}
-
-// ── Confirm modal ─────────────────────────────────────────────────────────────
-
-function ConfirmModal({ title, message, confirmLabel = 'Delete', onConfirm, onCancel }: {
-  title: string
-  message: string
-  confirmLabel?: string
-  onConfirm: () => void
-  onCancel: () => void
-}) {
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onCancel()
-      if (e.key === 'Enter') onConfirm()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onConfirm, onCancel])
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center"
-      onMouseDown={e => { if (e.target === e.currentTarget) onCancel() }}
-    >
-      <div className="absolute inset-0 bg-black/50" />
-      <div className="relative bg-[#161b27] border border-white/10 rounded-xl shadow-2xl w-80 p-6">
-        <h3 className="text-[15px] font-semibold text-slate-100 mb-2">{title}</h3>
-        <p className="text-[13px] text-slate-400 mb-6">{message}</p>
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={onCancel}
-            className="px-3 py-1.5 rounded-md text-[13px] text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors cursor-pointer"
-          >
-            Cancel
-          </button>
-          <button
-            autoFocus
-            onClick={onConfirm}
-            className="px-3 py-1.5 rounded-md text-[13px] bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-colors cursor-pointer"
-          >
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body
-  )
-}
-
-// ── Status badge ──────────────────────────────────────────────────────────────
-
-type Status = { kind: 'idle' } | { kind: 'saving' } | { kind: 'saved' } | { kind: 'error'; msg: string }
-
-function StatusBadge({ status }: { status: Status }) {
-  if (status.kind === 'idle') return null
-  if (status.kind === 'saving') return <span className="text-xs text-slate-500">Saving…</span>
-  if (status.kind === 'saved') return <span className="text-xs text-emerald-400">Saved</span>
-  return <span className="text-xs text-red-400">{status.msg}</span>
 }
 
 // ── Note row (draggable) ──────────────────────────────────────────────────────
@@ -272,30 +208,6 @@ function FolderSection({ folder, notes: folderNotes, collapsed, isDropTarget, on
   )
 }
 
-// ── Markdown components ───────────────────────────────────────────────────────
-
-const markdownComponents: Components = {
-  h1: ({ children }) => <h1 className="text-xl font-semibold text-slate-100 mb-3 mt-6 first:mt-0">{children}</h1>,
-  h2: ({ children }) => <h2 className="text-[16px] font-semibold text-slate-100 mb-2 mt-5 first:mt-0">{children}</h2>,
-  h3: ({ children }) => <h3 className="text-[14px] font-semibold text-slate-200 mb-2 mt-4 first:mt-0">{children}</h3>,
-  h4: ({ children }) => <h4 className="text-[13px] font-semibold text-slate-300 mb-1.5 mt-3 first:mt-0">{children}</h4>,
-  p:  ({ children }) => <p className="text-[14px] text-slate-300 leading-relaxed mb-3">{children}</p>,
-  code: ({ children, className }) => {
-    const isBlock = !!className
-    if (isBlock) return <code className="text-slate-300 text-sm font-mono">{children}</code>
-    return <code className="bg-white/8 text-blue-300 px-1.5 py-0.5 rounded text-[12px] font-mono">{children}</code>
-  },
-  pre: ({ children }) => <pre className="bg-white/5 rounded-lg p-4 mb-3 overflow-x-auto">{children}</pre>,
-  ul: ({ children }) => <ul className="text-slate-300 pl-5 mb-3 space-y-1 list-disc">{children}</ul>,
-  ol: ({ children }) => <ol className="text-slate-300 pl-5 mb-3 space-y-1 list-decimal">{children}</ol>,
-  li: ({ children }) => <li className="text-[14px] leading-relaxed">{children}</li>,
-  blockquote: ({ children }) => <blockquote className="border-l-2 border-white/15 pl-4 text-slate-500 italic mb-3">{children}</blockquote>,
-  a: ({ children, href }) => <a href={href} className="text-blue-400 hover:text-blue-300 underline">{children}</a>,
-  hr: () => <hr className="border-white/10 my-4" />,
-  strong: ({ children }) => <strong className="text-slate-100 font-semibold">{children}</strong>,
-  em: ({ children }) => <em className="italic">{children}</em>,
-}
-
 // ── Metadata popup ────────────────────────────────────────────────────────────
 
 type MetaState = {
@@ -328,13 +240,7 @@ function MetaPopup({ note, folderList, onClose }: {
   const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const popupRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    function onDown(e: MouseEvent) {
-      if (popupRef.current && !popupRef.current.contains(e.target as Node)) onClose()
-    }
-    document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
-  }, [onClose])
+  useClickOutside(popupRef, onClose)
 
   async function save(patch: Partial<MetaState>) {
     const next = { ...metaRef.current, ...patch }
@@ -351,7 +257,7 @@ function MetaPopup({ note, folderList, onClose }: {
       })
       queryClient.invalidateQueries({ queryKey: ['notes'] })
       setSaveStatus({ kind: 'saved' })
-      setTimeout(() => setSaveStatus({ kind: 'idle' }), 1500)
+      setTimeout(() => setSaveStatus({ kind: 'idle' }), 2000)
     } catch (err) {
       setSaveStatus({ kind: 'error', msg: String(err) })
     }
@@ -652,9 +558,12 @@ function NoteDetail({ note, folderList, onDeleted }: { note: notes.Note; folderL
         </div>
       </div>
 
-      <SearchableContent className="flex-1 overflow-y-auto" innerClassName="px-8 py-6" contentKey={note.path}>
-        <ReactMarkdown components={markdownComponents}>{note.content}</ReactMarkdown>
-      </SearchableContent>
+      <MarkdownView
+        content={note.content}
+        contentKey={note.path}
+        className="flex-1 overflow-y-auto"
+        innerClassName="px-8 py-6"
+      />
     </div>
   )
 }
@@ -664,18 +573,6 @@ function NoSelection() {
     <div className="flex flex-col items-center justify-center h-full gap-2">
       <StickyNote className="size-6 text-slate-700" />
       <p className="text-[14px] text-slate-600">Select a note to view it</p>
-    </div>
-  )
-}
-
-function EmptyList({ loading }: { loading: boolean }) {
-  return (
-    <div className="flex flex-col items-center justify-center h-full gap-2 px-6 text-center">
-      <StickyNote className="size-6 text-slate-700" />
-      <p className="text-[14px] text-slate-600">{loading ? 'Loading…' : 'No notes yet'}</p>
-      {!loading && (
-        <p className="text-[12px] text-slate-700">Use /cpad-save-note in Claude Code to save answers here</p>
-      )}
     </div>
   )
 }
@@ -835,7 +732,12 @@ export default function NotesPage() {
         {/* List */}
         <div className="flex-1 overflow-y-auto">
           {visibleNotes.length === 0 && folderList.length === 0 ? (
-            <EmptyList loading={isLoading} />
+            <EmptyState
+              icon={StickyNote}
+              loading={isLoading}
+              title="No notes yet"
+              description="Use /cpad-save-note in Claude Code to save answers here"
+            />
           ) : search ? (
             // Flat list when searching
             visibleNotes.length === 0 ? (
@@ -894,7 +796,12 @@ export default function NotesPage() {
               )}
               {/* Show flat list only if no folders and no uncategorized notes */}
               {folderList.length === 0 && uncategorized.length === 0 && !isLoading && (
-                <EmptyList loading={false} />
+                <EmptyState
+                  icon={StickyNote}
+                  loading={false}
+                  title="No notes yet"
+                  description="Use /cpad-save-note in Claude Code to save answers here"
+                />
               )}
             </>
           )}

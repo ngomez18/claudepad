@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import MarkdownView from '@/components/MarkdownView'
 import SearchableContent from '@/components/SearchableContent'
-import { MessageSquare, MessageCircle, RotateCcw, GitBranch, Clock, Wrench, Terminal, Check } from 'lucide-react'
+import { MessageSquare, MessageCircle, RotateCcw, GitBranch, Clock, Wrench, Terminal, Check, ClipboardList } from 'lucide-react'
+import EmptyState from '@/components/EmptyState'
 import { ResumeSession } from '@/lib/api'
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels'
 import { useSessions } from '@/hooks/useSessions'
@@ -97,10 +98,12 @@ function TranscriptView({
   session,
   transcript,
   loading,
+  onViewPlan,
 }: {
   session: sessions.Session
   transcript: sessions.TranscriptMessage[] | null
   loading: boolean
+  onViewPlan: (slug: string) => void
 }) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const [resumeState, setResumeState] = useState<'idle' | 'opened' | 'copied'>('idle')
@@ -132,26 +135,38 @@ function TranscriptView({
           <div className="text-[15px] font-semibold text-slate-100 leading-snug truncate">
             {sessionLabel(session)}
           </div>
-          {session.cwd && (
-            <button
-              onClick={handleResume}
-              className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors cursor-pointer ${
-                resumeState === 'copied'
-                  ? 'bg-amber-500/15 text-amber-400'
-                  : resumeState === 'opened'
-                  ? 'bg-green-500/15 text-green-400'
-                  : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200'
-              }`}
-              title={`claude --resume ${session.sessionId}`}
-            >
-              {resumeState === 'opened' || resumeState === 'copied' ? (
-                <Check className="size-3" />
-              ) : (
-                <Terminal className="size-3" />
-              )}
-              {resumeState === 'copied' ? 'Copied' : resumeState === 'opened' ? 'Opened' : 'Resume'}
-            </button>
-          )}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {session.slug && (
+              <button
+                onClick={() => onViewPlan(session.slug)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200 transition-colors cursor-pointer"
+                title={`View plan: ${session.slug}`}
+              >
+                <ClipboardList className="size-3" />
+                Plan
+              </button>
+            )}
+            {session.cwd && (
+              <button
+                onClick={handleResume}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors cursor-pointer ${
+                  resumeState === 'copied'
+                    ? 'bg-amber-500/15 text-amber-400'
+                    : resumeState === 'opened'
+                    ? 'bg-green-500/15 text-green-400'
+                    : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200'
+                }`}
+                title={`claude --resume ${session.sessionId}`}
+              >
+                {resumeState === 'opened' || resumeState === 'copied' ? (
+                  <Check className="size-3" />
+                ) : (
+                  <Terminal className="size-3" />
+                )}
+                {resumeState === 'copied' ? 'Copied' : resumeState === 'opened' ? 'Opened' : 'Resume'}
+              </button>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           {session.cwd && (
@@ -253,28 +268,14 @@ function NoSelection() {
   )
 }
 
-function EmptyList({ loading }: { loading: boolean }) {
-  return (
-    <div className="flex flex-col items-center justify-center h-full gap-2 px-6 text-center">
-      <MessageSquare className="size-6 text-slate-700" />
-      <p className="text-[14px] text-slate-600">
-        {loading ? 'Loading…' : 'No sessions found'}
-      </p>
-      {!loading && (
-        <p className="text-[12px] text-slate-700">
-          Sessions appear here after using Claude Code
-        </p>
-      )}
-    </div>
-  )
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SessionsPage({
   activeProject,
+  onViewPlan,
 }: {
   activeProject: projects.Project | null
+  onViewPlan: (slug: string) => void
 }) {
   const { data: sessionList, isLoading, refetch } = useSessions()
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -313,7 +314,7 @@ export default function SessionsPage({
   return (
     <PanelGroup orientation="horizontal" className="h-full overflow-hidden">
       {/* List panel */}
-      <Panel defaultSize="300px" minSize="200px" maxSize="60%" className="flex flex-col border-r border-white/5 overflow-hidden">
+      <Panel defaultSize="280px" minSize="200px" maxSize="60%" className="flex flex-col border-r border-white/5 overflow-hidden">
         {/* Header */}
         <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
           <span className="text-[12px] font-semibold tracking-widest uppercase text-slate-500">
@@ -342,7 +343,12 @@ export default function SessionsPage({
         {/* List */}
         <div className="flex-1 overflow-y-auto">
           {!filtered || filtered.length === 0 ? (
-            <EmptyList loading={isLoading} />
+            <EmptyState
+              icon={MessageSquare}
+              loading={isLoading}
+              title="No sessions found"
+              description="Sessions appear here after using Claude Code"
+            />
           ) : (
             filtered.map(session => (
               <SessionRow
@@ -367,6 +373,7 @@ export default function SessionsPage({
             session={selected}
             transcript={transcript ?? null}
             loading={loadingTranscript}
+            onViewPlan={onViewPlan}
           />
         ) : (
           <NoSelection />

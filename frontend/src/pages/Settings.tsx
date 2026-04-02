@@ -1,28 +1,19 @@
 import { useState, useEffect } from 'react'
 import { FolderOpen, Eye, Code2 } from 'lucide-react'
 import MarkdownView from '@/components/MarkdownView'
-import CodeMirror from '@uiw/react-codemirror'
+import CodeMirrorEditor from '@/components/CodeMirrorEditor'
+import StatusBadge from '@/components/StatusBadge'
+import ViewModeToggle from '@/components/ViewModeToggle'
 import { json } from '@codemirror/lang-json'
 import { markdown } from '@codemirror/lang-markdown'
 import { EditorView } from '@codemirror/view'
-import { oneDark } from '@codemirror/theme-one-dark'
 import { UpdateSettings, UpdateClaudeMd, RevealInFinder } from '@/lib/api'
 import { useSettings } from '@/hooks/useSettings'
 import { useClaudeMd } from '@/hooks/useClaudeMd'
 import { useKeyboardSave } from '@/hooks/useKeyboardSave'
 import type { settings, claudemd } from '../../wailsjs/go/models'
 import type { projects } from '../../wailsjs/go/models'
-
-// ── Status badge ──────────────────────────────────────────────────────────────
-
-type Status = { kind: 'idle' } | { kind: 'saving' } | { kind: 'saved' } | { kind: 'error'; msg: string }
-
-function StatusBadge({ status }: { status: Status }) {
-  if (status.kind === 'idle') return null
-  if (status.kind === 'saving') return <span className="text-xs text-slate-500">Saving…</span>
-  if (status.kind === 'saved') return <span className="text-xs text-emerald-400">Saved</span>
-  return <span className="text-xs text-red-400">{status.msg}</span>
-}
+import type { Status } from '@/components/StatusBadge'
 
 // ── Editor panel ──────────────────────────────────────────────────────────────
 
@@ -78,45 +69,29 @@ function EditorPanel({ file, language, onSave }: {
           </button>
         )}
         {language === 'markdown' && (
-          <div className="flex items-center gap-0.5 bg-white/4 rounded-md p-0.5">
-            <button
-              onClick={() => setViewMode('rendered')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] transition-colors ${
-                viewMode === 'rendered' ? 'bg-white/10 text-slate-200' : 'text-slate-600 hover:text-slate-400'
-              }`}
-            >
-              <Eye className="size-3" />
-              Preview
-            </button>
-            <button
-              onClick={() => setViewMode('edit')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] transition-colors ${
-                viewMode === 'edit' ? 'bg-white/10 text-slate-200' : 'text-slate-600 hover:text-slate-400'
-              }`}
-            >
-              <Code2 className="size-3" />
-              Edit
-            </button>
-          </div>
+          <ViewModeToggle
+            modes={[
+              { id: 'rendered', label: 'Preview', icon: Eye },
+              { id: 'edit', label: 'Edit', icon: Code2 },
+            ]}
+            value={viewMode}
+            onChange={setViewMode}
+          />
         )}
       </div>
 
       {language === 'markdown' && viewMode === 'rendered' ? (
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          <MarkdownView content={editorContent} />
-        </div>
+        <MarkdownView
+          content={editorContent}
+          contentKey={file.path}
+          className="flex-1 min-h-0 overflow-y-auto"
+        />
       ) : (
-        <div className="flex-1 min-h-0 rounded-xl overflow-hidden border border-white/5">
-          <CodeMirror
-            value={editorContent}
-            height="100%"
-            extensions={extensions}
-            theme={oneDark}
-            basicSetup={{ lineNumbers: true, bracketMatching: true }}
-            onChange={setEditorContent}
-            style={{ height: '100%' }}
-          />
-        </div>
+        <CodeMirrorEditor
+          value={editorContent}
+          onChange={setEditorContent}
+          extensions={extensions}
+        />
       )}
 
       <div className="flex items-center gap-3 shrink-0">

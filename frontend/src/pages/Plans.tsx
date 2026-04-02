@@ -1,17 +1,19 @@
 import { useState, useEffect, useRef } from 'react'
 import { FileText, RotateCcw, Eye, Code2, Pencil, Pin, Archive, SlidersHorizontal, ChevronDown, Globe, FolderOpen, Check } from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels'
 import { useQueryClient } from '@tanstack/react-query'
 import { SetPlanName, SetPlanMeta, RevealInFinder } from '@/lib/api'
 import { usePlans } from '@/hooks/usePlans'
 import { usePreservedPlans } from '@/hooks/usePreservedPlans'
 import { useProjects } from '@/hooks/useProjects'
-import { relativeTime } from '@/lib/utils'
+import { relativeTime, absoluteTime } from '@/lib/utils'
 import type { plans, projects } from '../../wailsjs/go/models'
-import type { Components } from 'react-markdown'
-import SearchableContent from '@/components/SearchableContent'
+import MarkdownView from '@/components/MarkdownView'
+import StatusBadge from '@/components/StatusBadge'
+import ViewModeToggle from '@/components/ViewModeToggle'
+import EmptyState from '@/components/EmptyState'
+import { useClickOutside } from '@/hooks/useClickOutside'
+import type { Status } from '@/components/StatusBadge'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -22,13 +24,6 @@ function formatName(filename: string): string {
 
 function displayName(plan: plans.Plan): string {
   return plan.name || formatName(plan.filename)
-}
-
-function absoluteTime(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
 }
 
 function planStatus(plan: plans.Plan): { label: string; color: string } {
@@ -42,17 +37,6 @@ function readTime(wordCount: number): number {
   return Math.max(1, Math.ceil(wordCount / 200))
 }
 
-// ── Status badge ──────────────────────────────────────────────────────────────
-
-type Status = { kind: 'idle' } | { kind: 'saving' } | { kind: 'saved' } | { kind: 'error'; msg: string }
-
-function StatusBadge({ status }: { status: Status }) {
-  if (status.kind === 'idle') return null
-  if (status.kind === 'saving') return <span className="text-xs text-slate-500">Saving…</span>
-  if (status.kind === 'saved') return <span className="text-xs text-emerald-400">Saved</span>
-  return <span className="text-xs text-red-400">{status.msg}</span>
-}
-
 // ── Project dropdown ──────────────────────────────────────────────────────────
 
 function ProjectDropdown({ value, onChange, projectList }: {
@@ -64,14 +48,7 @@ function ProjectDropdown({ value, onChange, projectList }: {
   const ref = useRef<HTMLDivElement>(null)
   const active = value ? projectList.find(p => p.id === value) : null
 
-  useEffect(() => {
-    if (!open) return
-    function onDown(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
-  }, [open])
+  useClickOutside(ref, () => setOpen(false), open)
 
   return (
     <div ref={ref} className="relative">
@@ -194,64 +171,6 @@ function PlanRow({ plan, selected, onClick }: {
   )
 }
 
-// ── Markdown components ───────────────────────────────────────────────────────
-
-const markdownComponents: Components = {
-  h1: ({ children }) => <h1 className="text-xl font-semibold text-slate-100 mb-3 mt-6 first:mt-0">{children}</h1>,
-  h2: ({ children }) => <h2 className="text-[16px] font-semibold text-slate-100 mb-2 mt-5 first:mt-0">{children}</h2>,
-  h3: ({ children }) => <h3 className="text-[14px] font-semibold text-slate-200 mb-2 mt-4 first:mt-0">{children}</h3>,
-  h4: ({ children }) => <h4 className="text-[13px] font-semibold text-slate-300 mb-1.5 mt-3 first:mt-0">{children}</h4>,
-  h5: ({ children }) => <h5 className="text-[12px] font-semibold text-slate-400 mb-1 mt-3 first:mt-0">{children}</h5>,
-  h6: ({ children }) => <h6 className="text-[12px] font-medium text-slate-500 mb-1 mt-2 first:mt-0">{children}</h6>,
-  p:  ({ children }) => <p className="text-[14px] text-slate-300 leading-relaxed mb-3">{children}</p>,
-  code: ({ children, className }) => {
-    const isBlock = !!className
-    if (isBlock) return <code className="text-slate-300 text-sm font-mono">{children}</code>
-    return <code className="bg-white/8 text-blue-300 px-1.5 py-0.5 rounded text-[12px] font-mono">{children}</code>
-  },
-  pre: ({ children }) => <pre className="bg-white/5 rounded-lg p-4 mb-3 overflow-x-auto">{children}</pre>,
-  ul: ({ children }) => <ul className="text-slate-300 pl-5 mb-3 space-y-1 list-disc">{children}</ul>,
-  ol: ({ children }) => <ol className="text-slate-300 pl-5 mb-3 space-y-1 list-decimal">{children}</ol>,
-  li: ({ children }) => {
-    const childArr = Array.isArray(children) ? children : [children]
-    const firstChild = childArr[0]
-    if (
-      firstChild &&
-      typeof firstChild === 'object' &&
-      'type' in firstChild &&
-      firstChild.type === 'input'
-    ) {
-      const checked = (firstChild as React.ReactElement<{ checked?: boolean }>).props.checked
-      return (
-        <li className="text-[14px] leading-relaxed list-none flex items-start gap-2 -ml-1">
-          <span className={`mt-0.75 size-3.5 shrink-0 rounded-[3px] border flex items-center justify-center ${
-            checked ? 'bg-blue-500/30 border-blue-500/50' : 'border-white/20'
-          }`}>
-            {checked && <span className="block size-1.25 rounded-[1px] bg-blue-400" />}
-          </span>
-          <span>{childArr.slice(1)}</span>
-        </li>
-      )
-    }
-    return <li className="text-[14px] leading-relaxed">{children}</li>
-  },
-  blockquote: ({ children }) => <blockquote className="border-l-2 border-white/15 pl-4 text-slate-500 italic mb-3">{children}</blockquote>,
-  a: ({ children, href }) => <a href={href} className="text-blue-400 hover:text-blue-300 underline">{children}</a>,
-  hr: () => <hr className="border-white/10 my-4" />,
-  strong: ({ children }) => <strong className="text-slate-100 font-semibold">{children}</strong>,
-  em: ({ children }) => <em className="italic">{children}</em>,
-  table: ({ children }) => (
-    <div className="overflow-x-auto mb-4">
-      <table className="w-full text-[13px] border-collapse">{children}</table>
-    </div>
-  ),
-  thead: ({ children }) => <thead className="border-b border-white/10">{children}</thead>,
-  tbody: ({ children }) => <tbody>{children}</tbody>,
-  tr: ({ children }) => <tr className="border-b border-white/5 hover:bg-white/2 transition-colors">{children}</tr>,
-  th: ({ children }) => <th className="text-left px-3 py-2 text-[12px] font-semibold uppercase tracking-wide text-slate-500">{children}</th>,
-  td: ({ children }) => <td className="px-3 py-2 text-slate-300">{children}</td>,
-}
-
 // ── Metadata popup ────────────────────────────────────────────────────────────
 
 type MetaState = {
@@ -282,13 +201,7 @@ function MetaPopup({ plan, projectList, onClose }: {
   const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const popupRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    function onDown(e: MouseEvent) {
-      if (popupRef.current && !popupRef.current.contains(e.target as Node)) onClose()
-    }
-    document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
-  }, [onClose])
+  useClickOutside(popupRef, onClose)
 
   async function save(patch: Partial<MetaState>) {
     const next = { ...metaRef.current, ...patch }
@@ -305,7 +218,7 @@ function MetaPopup({ plan, projectList, onClose }: {
       })
       queryClient.invalidateQueries({ queryKey: ['plans'] })
       setSaveStatus({ kind: 'saved' })
-      setTimeout(() => setSaveStatus({ kind: 'idle' }), 1500)
+      setTimeout(() => setSaveStatus({ kind: 'idle' }), 2000)
     } catch (err) {
       setSaveStatus({ kind: 'error', msg: String(err) })
     }
@@ -555,26 +468,14 @@ function PlanDetail({ plan, projectList }: {
           <div className="w-px h-5 bg-white/8 mx-1" />
 
           {/* View toggle */}
-          <div className="flex items-center gap-0.5 bg-white/4 rounded-md p-0.5">
-            <button
-              onClick={() => setViewMode('rendered')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] transition-colors ${
-                viewMode === 'rendered' ? 'bg-white/10 text-slate-200' : 'text-slate-600 hover:text-slate-400'
-              }`}
-            >
-              <Eye className="size-3" />
-              Rendered
-            </button>
-            <button
-              onClick={() => setViewMode('raw')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] transition-colors ${
-                viewMode === 'raw' ? 'bg-white/10 text-slate-200' : 'text-slate-600 hover:text-slate-400'
-              }`}
-            >
-              <Code2 className="size-3" />
-              Raw
-            </button>
-          </div>
+          <ViewModeToggle
+            modes={[
+              { id: 'rendered', label: 'Rendered', icon: Eye },
+              { id: 'raw', label: 'Raw', icon: Code2 },
+            ]}
+            value={viewMode}
+            onChange={setViewMode}
+          />
         </div>
       </div>
 
@@ -590,15 +491,20 @@ function PlanDetail({ plan, projectList }: {
       )}
 
       {/* Content */}
-      <SearchableContent className="flex-1 overflow-y-auto" innerClassName="px-8 py-6" contentKey={plan.path}>
-        {viewMode === 'rendered' ? (
-          <ReactMarkdown components={markdownComponents} remarkPlugins={[remarkGfm]}>{plan.content}</ReactMarkdown>
-        ) : (
+      {viewMode === 'rendered' ? (
+        <MarkdownView
+          content={plan.content}
+          contentKey={plan.path}
+          className="flex-1 overflow-y-auto"
+          innerClassName="px-8 py-6"
+        />
+      ) : (
+        <div className="flex-1 overflow-y-auto px-8 py-6">
           <pre className="text-[14px] leading-relaxed text-slate-300 font-mono whitespace-pre-wrap wrap-break-word">
             {plan.content}
           </pre>
-        )}
-      </SearchableContent>
+        </div>
+      )}
     </div>
   )
 }
@@ -612,24 +518,16 @@ function NoSelection() {
   )
 }
 
-function EmptyList({ loading }: { loading: boolean }) {
-  return (
-    <div className="flex flex-col items-center justify-center h-full gap-2 px-6 text-center">
-      <FileText className="size-6 text-slate-700" />
-      <p className="text-[14px] text-slate-600">{loading ? 'Loading…' : 'No plans yet'}</p>
-      {!loading && (
-        <p className="text-[12px] text-slate-700">Plans appear here when created in Claude Code</p>
-      )}
-    </div>
-  )
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function PlansPage({
   projects: projectList,
+  initialPlanSlug,
+  onPlanSlugConsumed,
 }: {
   projects: projects.Project[] | null
+  initialPlanSlug?: string | null
+  onPlanSlugConsumed?: () => void
 }) {
   const { data: planList, isLoading, refetch } = usePlans()
   const { data: preservedPlans } = usePreservedPlans()
@@ -640,6 +538,14 @@ export default function PlansPage({
   const [showArchived, setShowArchived] = useState(false)
 
   const allPlans = [...(planList ?? []), ...(preservedPlans ?? [])]
+
+  // When navigating here from a session, auto-select the linked plan.
+  useEffect(() => {
+    if (!initialPlanSlug || allPlans.length === 0) return
+    const match = allPlans.find(p => p.filename === initialPlanSlug)
+    if (match) setSelectedPath(match.path)
+    onPlanSlugConsumed?.()
+  }, [initialPlanSlug, allPlans.length])
 
   const visiblePlans = allPlans.filter(p => showArchived || !p.archived)
   const selected = allPlans.find(p => p.path === selectedPath) ?? null
@@ -666,7 +572,12 @@ export default function PlansPage({
 
         <div className="flex-1 overflow-y-auto">
           {visiblePlans.length === 0 ? (
-            <EmptyList loading={isLoading} />
+            <EmptyState
+              icon={FileText}
+              loading={isLoading}
+              title="No plans yet"
+              description="Plans appear here when created in Claude Code"
+            />
           ) : (
             visiblePlans.map(plan => (
               <PlanRow
