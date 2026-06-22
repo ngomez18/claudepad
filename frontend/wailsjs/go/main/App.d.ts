@@ -15,6 +15,8 @@ export function AddProject(arg1:string):Promise<void>;
 
 export function CreateNoteFolder(arg1:string):Promise<folders.Folder>;
 
+export function CreatePlanFolder(arg1:string):Promise<folders.Folder>;
+
 export function DeleteFolder(arg1:string):Promise<void>;
 
 export function DeleteNote(arg1:string):Promise<void>;
@@ -28,6 +30,8 @@ export function GetMcpServers():Promise<Record<string, settings.McpServerConfig>
 export function GetNoteFolders():Promise<Array<folders.Folder>>;
 
 export function GetNotes():Promise<Array<notes.Note>>;
+
+export function GetPlanFolders():Promise<Array<folders.Folder>>;
 
 export function GetPlans():Promise<Array<plans.Plan>>;
 

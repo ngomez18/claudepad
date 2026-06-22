@@ -60,10 +60,14 @@ func SetFolderPinned(q *generated.Queries, id string, pinned bool) error {
 	})
 }
 
-// DeleteFolder clears all note assignments for the folder then deletes it.
+// DeleteFolder clears all entity assignments for the folder then deletes it.
 func DeleteFolder(q *generated.Queries, id string) error {
-	if err := q.ClearFolderFromNotes(context.Background(), id); err != nil {
+	ctx := context.Background()
+	if err := q.ClearFolderFromNotes(ctx, id); err != nil {
 		return err
 	}
-	return q.DeleteFolder(context.Background(), id)
+	if err := q.ClearFolderFromPlans(ctx, id); err != nil {
+		return err
+	}
+	return q.DeleteFolder(ctx, id)
 }

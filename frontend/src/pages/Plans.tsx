@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
-import { FileText, RotateCcw, Eye, Code2, Pencil, Pin, Archive, SlidersHorizontal, ChevronDown, Globe, FolderOpen, Check } from 'lucide-react'
+import { FileText, RotateCcw, Eye, Code2, Pencil, Pin, Archive, SlidersHorizontal, ChevronDown, ChevronRight, Globe, FolderOpen, Folder as FolderIcon, FolderPlus, Trash2, Check } from 'lucide-react'
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels'
-import { useQueryClient } from '@tanstack/react-query'
-import { SetPlanName, SetPlanMeta, RevealInFinder } from '@/lib/api'
+import { useQueryClient, useQuery } from '@tanstack/react-query'
+import { SetPlanName, SetPlanMeta, RevealInFinder, GetPlanFolders, CreatePlanFolder, RenameFolder, SetFolderPinned, DeleteFolder } from '@/lib/api'
 import { usePlans } from '@/hooks/usePlans'
 import { usePreservedPlans } from '@/hooks/usePreservedPlans'
 import { useProjects } from '@/hooks/useProjects'
 import { relativeTime, absoluteTime } from '@/lib/utils'
-import type { plans, projects } from '../../wailsjs/go/models'
+import type { plans, projects, folders } from '../../wailsjs/go/models'
 import MarkdownView from '@/components/MarkdownView'
+import ConfirmModal from '@/components/ConfirmModal'
 import StatusBadge from '@/components/StatusBadge'
 import ViewModeToggle from '@/components/ViewModeToggle'
 import EmptyState from '@/components/EmptyState'
@@ -100,20 +101,23 @@ function ProjectDropdown({ value, onChange, projectList }: {
   )
 }
 
-// ── List panel ────────────────────────────────────────────────────────────────
+// ── Plan row (draggable) ──────────────────────────────────────────────────────
 
-function PlanRow({ plan, selected, onClick }: {
+function PlanRow({ plan, selected, onClick, onDragStart }: {
   plan: plans.Plan
   selected: boolean
   onClick: () => void
+  onDragStart: (path: string) => void
 }) {
   const pct = plan.todoTotal > 0 ? (plan.todoDone / plan.todoTotal) * 100 : 0
   const allDone = plan.todoTotal > 0 && plan.todoDone === plan.todoTotal
 
   return (
     <button
+      draggable
+      onDragStart={e => { e.dataTransfer.setData('planPath', plan.path); e.dataTransfer.effectAllowed = 'move'; onDragStart(plan.path) }}
       onClick={onClick}
-      className={`w-full text-left px-4 py-3.5 border-b border-white/4 transition-colors group relative
+      className={`w-full text-left px-4 py-3.5 border-b border-white/4 transition-colors group relative cursor-grab active:cursor-grabbing
         ${plan.archived || plan.preserved ? 'opacity-70' : ''}
         ${selected
           ? plan.preserved
@@ -171,6 +175,133 @@ function PlanRow({ plan, selected, onClick }: {
   )
 }
 
+// ── Folder section ────────────────────────────────────────────────────────────
+
+function FolderSection({ folder, plans: folderPlans, collapsed, isDropTarget, onToggle, onDrop, onDragOver, onDragLeave, selectedPath, onPlanClick, onDragStart, onPin, onRename, onDelete }: {
+  folder: folders.Folder | null
+  plans: plans.Plan[]
+  collapsed: boolean
+  isDropTarget: boolean
+  onToggle: () => void
+  onDrop: (planPath: string) => void
+  onDragOver: () => void
+  onDragLeave: () => void
+  selectedPath: string | null
+  onPlanClick: (path: string) => void
+  onDragStart: (path: string) => void
+  onPin?: (pinned: boolean) => void
+  onRename?: (name: string) => void
+  onDelete?: () => void
+}) {
+  const [renaming, setRenaming] = useState(false)
+  const [renameValue, setRenameValue] = useState('')
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+
+  const isUncategorized = folder === null
+  const name = folder?.name ?? 'Uncategorized'
+
+  function handleRenameSubmit() {
+    const trimmed = renameValue.trim()
+    if (trimmed && trimmed !== name) onRename?.(trimmed)
+    setRenaming(false)
+  }
+
+  return (
+    <div>
+      <div
+        className={`flex items-center gap-2 px-3 py-2.5 group/folder border-b border-white/6 transition-colors ${
+          isDropTarget ? 'bg-blue-500/15 border-b-blue-500/30' : 'hover:bg-white/4'
+        }`}
+        onDragOver={e => { e.preventDefault(); onDragOver() }}
+        onDragLeave={onDragLeave}
+        onDrop={e => { e.preventDefault(); const path = e.dataTransfer.getData('planPath'); if (path) onDrop(path) }}
+      >
+        <button
+          onClick={onToggle}
+          className="flex items-center gap-2 flex-1 min-w-0 text-left"
+        >
+          {collapsed
+            ? <ChevronRight className="size-3.5 text-slate-600 shrink-0" />
+            : <ChevronDown className="size-3.5 text-slate-500 shrink-0" />
+          }
+          {isUncategorized
+            ? <FolderIcon className="size-4 text-slate-600 shrink-0" />
+            : (isDropTarget
+              ? <FolderOpen className={`size-4 shrink-0 ${folder?.pinned ? 'text-blue-400' : 'text-slate-400'}`} />
+              : <FolderIcon className={`size-4 shrink-0 ${folder?.pinned ? 'text-blue-400' : 'text-slate-500'}`} />
+            )
+          }
+          {renaming ? (
+            <input
+              autoFocus
+              value={renameValue}
+              onChange={e => setRenameValue(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleRenameSubmit(); else if (e.key === 'Escape') setRenaming(false) }}
+              onBlur={handleRenameSubmit}
+              onClick={e => e.stopPropagation()}
+              className="flex-1 min-w-0 text-[13px] font-semibold text-slate-200 bg-white/5 border border-blue-500/40 rounded px-1.5 outline-none"
+            />
+          ) : (
+            <span className={`text-[13px] font-semibold truncate ${isUncategorized ? 'text-slate-600' : 'text-slate-400'}`}>
+              {name}
+            </span>
+          )}
+          <span className="text-[11px] text-slate-600 ml-0.5 shrink-0">{folderPlans.length}</span>
+        </button>
+
+        {!isUncategorized && !renaming && (
+          <div className="flex items-center gap-0.5 opacity-0 group-hover/folder:opacity-100 transition-opacity">
+            <button
+              onClick={() => onPin?.(!folder?.pinned)}
+              className={`p-1 rounded transition-colors ${folder?.pinned ? 'text-blue-400' : 'text-slate-600 hover:text-slate-400'}`}
+              title={folder?.pinned ? 'Unpin folder' : 'Pin folder'}
+            >
+              <Pin className="size-3.5" />
+            </button>
+            <button
+              onClick={() => { setRenameValue(name); setRenaming(true) }}
+              className="p-1 rounded text-slate-600 hover:text-slate-400 transition-colors"
+              title="Rename folder"
+            >
+              <Pencil className="size-3.5" />
+            </button>
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="p-1 rounded text-slate-600 hover:text-red-400 transition-colors"
+              title="Delete folder"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {!collapsed && folderPlans.map(plan => (
+        <PlanRow
+          key={plan.path}
+          plan={plan}
+          selected={selectedPath === plan.path}
+          onClick={() => onPlanClick(plan.path)}
+          onDragStart={onDragStart}
+        />
+      ))}
+
+      {showDeleteModal && (
+        <ConfirmModal
+          title="Delete folder"
+          message={folderPlans.length > 0
+            ? `"${name}" has ${folderPlans.length} plan${folderPlans.length !== 1 ? 's' : ''}. They will be moved to Uncategorized.`
+            : `Delete "${name}"?`
+          }
+          confirmLabel="Delete"
+          onConfirm={() => { onDelete?.(); setShowDeleteModal(false) }}
+          onCancel={() => setShowDeleteModal(false)}
+        />
+      )}
+    </div>
+  )
+}
+
 // ── Metadata popup ────────────────────────────────────────────────────────────
 
 type MetaState = {
@@ -179,11 +310,13 @@ type MetaState = {
   tags: string[]
   notes: string
   archived: boolean
+  folderId: string
 }
 
-function MetaPopup({ plan, projectList, onClose }: {
+function MetaPopup({ plan, projectList, folderList, onClose }: {
   plan: plans.Plan
   projectList: projects.Project[] | null
+  folderList: folders.Folder[]
   onClose: () => void
 }) {
   const queryClient = useQueryClient()
@@ -193,9 +326,12 @@ function MetaPopup({ plan, projectList, onClose }: {
     tags: plan.tags ?? [],
     notes: plan.notes,
     archived: plan.archived,
+    folderId: plan.folderId ?? '',
   })
   const [saveStatus, setSaveStatus] = useState<Status>({ kind: 'idle' })
   const [tagInput, setTagInput] = useState('')
+  const [creatingFolder, setCreatingFolder] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
   const metaRef = useRef(meta)
   metaRef.current = meta
   const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -215,6 +351,7 @@ function MetaPopup({ plan, projectList, onClose }: {
         tags: next.tags,
         notes: next.notes,
         archived: next.archived,
+        folderId: next.folderId,
       })
       queryClient.invalidateQueries({ queryKey: ['plans'] })
       setSaveStatus({ kind: 'saved' })
@@ -235,6 +372,18 @@ function MetaPopup({ plan, projectList, onClose }: {
     if (!tag || meta.tags.includes(tag)) { setTagInput(''); return }
     save({ tags: [...meta.tags, tag] })
     setTagInput('')
+  }
+
+  async function handleCreateFolder() {
+    const name = newFolderName.trim()
+    if (!name) { setCreatingFolder(false); return }
+    try {
+      const folder = await CreatePlanFolder(name)
+      queryClient.invalidateQueries({ queryKey: ['planFolders'] })
+      setCreatingFolder(false)
+      setNewFolderName('')
+      save({ folderId: folder.id })
+    } catch { /* ignore */ }
   }
 
   const status = planStatus(plan)
@@ -272,6 +421,49 @@ function MetaPopup({ plan, projectList, onClose }: {
               meta.pinned ? 'translate-x-[15px]' : 'translate-x-[3px]'
             }`} />
           </button>
+        </div>
+
+        {/* Folder */}
+        <div className="px-4 py-3">
+          <label className={labelClass}>Folder</label>
+          <div className="flex gap-1.5">
+            <select
+              value={meta.folderId}
+              onChange={e => save({ folderId: e.target.value })}
+              className={`${inputClass} flex-1 appearance-none`}
+            >
+              <option value="">No folder</option>
+              {folderList.map(f => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => setCreatingFolder(true)}
+              className="p-1.5 rounded-md bg-white/5 border border-white/8 text-slate-500 hover:text-slate-300 hover:bg-white/10 transition-colors shrink-0"
+              title="New folder"
+            >
+              <FolderPlus className="size-3.5" />
+            </button>
+          </div>
+          {creatingFolder && (
+            <div className="mt-1.5 flex gap-1.5">
+              <input
+                autoFocus
+                type="text"
+                value={newFolderName}
+                onChange={e => setNewFolderName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleCreateFolder(); else if (e.key === 'Escape') { setCreatingFolder(false); setNewFolderName('') } }}
+                placeholder="Folder name…"
+                className={`${inputClass} flex-1`}
+              />
+              <button
+                onClick={handleCreateFolder}
+                className="px-2 py-1 rounded-md bg-blue-500/20 border border-blue-500/30 text-[12px] text-blue-400 hover:bg-blue-500/30 transition-colors shrink-0"
+              >
+                Create
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Project */}
@@ -330,9 +522,10 @@ function MetaPopup({ plan, projectList, onClose }: {
 
 // ── Detail panel ──────────────────────────────────────────────────────────────
 
-function PlanDetail({ plan, projectList }: {
+function PlanDetail({ plan, projectList, folderList }: {
   plan: plans.Plan
   projectList: projects.Project[] | null
+  folderList: folders.Folder[]
 }) {
   const queryClient = useQueryClient()
   const [viewMode, setViewMode] = useState<'rendered' | 'raw'>('rendered')
@@ -370,6 +563,7 @@ function PlanDetail({ plan, projectList }: {
         tags: plan.tags ?? [],
         notes: plan.notes,
         archived: !plan.archived,
+        folderId: plan.folderId ?? '',
       })
       queryClient.invalidateQueries({ queryKey: ['plans'] })
     } catch { /* ignore */ }
@@ -418,9 +612,8 @@ function PlanDetail({ plan, projectList }: {
           )}
         </div>
 
-        {/* Right: actions (shrink-0 keeps this from wrapping) */}
+        {/* Right: actions */}
         <div className="flex items-center gap-1 shrink-0">
-          {/* Reveal in Finder */}
           <button
             onClick={() => RevealInFinder(plan.path)}
             title="Reveal in Finder"
@@ -429,7 +622,6 @@ function PlanDetail({ plan, projectList }: {
             <FolderOpen className="size-3.5" />
           </button>
 
-          {/* Archive */}
           <button
             onClick={toggleArchive}
             title={plan.archived ? 'Unarchive' : 'Archive'}
@@ -442,7 +634,6 @@ function PlanDetail({ plan, projectList }: {
             <Archive className="size-3.5" />
           </button>
 
-          {/* Metadata */}
           <div className="relative">
             <button
               onClick={() => setShowMeta(m => !m)}
@@ -459,15 +650,14 @@ function PlanDetail({ plan, projectList }: {
               <MetaPopup
                 plan={plan}
                 projectList={projectList}
+                folderList={folderList}
                 onClose={() => setShowMeta(false)}
               />
             )}
           </div>
 
-          {/* Divider */}
           <div className="w-px h-5 bg-white/8 mx-1" />
 
-          {/* View toggle */}
           <ViewModeToggle
             modes={[
               { id: 'rendered', label: 'Rendered', icon: Eye },
@@ -529,17 +719,32 @@ export default function PlansPage({
   initialPlanSlug?: string | null
   onPlanSlugConsumed?: () => void
 }) {
+  const queryClient = useQueryClient()
   const { data: planList, isLoading, refetch } = usePlans()
   const { data: preservedPlans } = usePreservedPlans()
   const { data: fetchedProjects } = useProjects()
+  const { data: folderList = [] } = useQuery({ queryKey: ['planFolders'], queryFn: GetPlanFolders })
   const resolvedProjectList = projectList ?? fetchedProjects ?? null
 
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
   const [showArchived, setShowArchived] = useState(false)
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const [seenFolderIds, setSeenFolderIds] = useState<Set<string>>(new Set())
+  const [dragOverId, setDragOverId] = useState<string | null>(null)
+  const [creatingFolder, setCreatingFolder] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
+
+  // Collapse any folder that hasn't been seen before (default closed).
+  useEffect(() => {
+    if (!folderList) return
+    const newIds = folderList.map(f => f.id).filter(id => !seenFolderIds.has(id))
+    if (newIds.length === 0) return
+    setCollapsed(prev => new Set([...prev, ...newIds]))
+    setSeenFolderIds(prev => new Set([...prev, ...newIds]))
+  }, [folderList])
 
   const allPlans = [...(planList ?? []), ...(preservedPlans ?? [])]
 
-  // When navigating here from a session, auto-select the linked plan.
   useEffect(() => {
     if (!initialPlanSlug || allPlans.length === 0) return
     const match = allPlans.find(p => p.filename === initialPlanSlug)
@@ -549,6 +754,73 @@ export default function PlansPage({
 
   const visiblePlans = allPlans.filter(p => showArchived || !p.archived)
   const selected = allPlans.find(p => p.path === selectedPath) ?? null
+
+  function toggleCollapse(key: string) {
+    setCollapsed(prev => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+  }
+
+  async function handleDrop(planPath: string, folderId: string) {
+    setDragOverId(null)
+    const plan = allPlans.find(p => p.path === planPath)
+    if (!plan || plan.folderId === folderId) return
+    try {
+      await SetPlanMeta(planPath, {
+        pinned: plan.pinned,
+        projectId: plan.projectId,
+        tags: plan.tags ?? [],
+        notes: plan.notes,
+        archived: plan.archived,
+        folderId,
+      })
+      queryClient.invalidateQueries({ queryKey: ['plans'] })
+    } catch { /* ignore */ }
+  }
+
+  async function handlePin(id: string, pinned: boolean) {
+    try {
+      await SetFolderPinned(id, pinned)
+      queryClient.invalidateQueries({ queryKey: ['planFolders'] })
+    } catch { /* ignore */ }
+  }
+
+  async function handleRename(id: string, name: string) {
+    try {
+      await RenameFolder(id, name)
+      queryClient.invalidateQueries({ queryKey: ['planFolders'] })
+    } catch { /* ignore */ }
+  }
+
+  async function handleDelete(id: string) {
+    try {
+      await DeleteFolder(id)
+      queryClient.invalidateQueries({ queryKey: ['planFolders'] })
+      queryClient.invalidateQueries({ queryKey: ['plans'] })
+    } catch { /* ignore */ }
+  }
+
+  async function handleCreateFolder() {
+    const name = newFolderName.trim()
+    if (!name) { setCreatingFolder(false); return }
+    try {
+      await CreatePlanFolder(name)
+      queryClient.invalidateQueries({ queryKey: ['planFolders'] })
+      setCreatingFolder(false)
+      setNewFolderName('')
+    } catch { /* ignore */ }
+  }
+
+  // Group plans by folder
+  const plansByFolder = new Map<string, plans.Plan[]>()
+  for (const plan of visiblePlans) {
+    const key = plan.folderId ?? ''
+    if (!plansByFolder.has(key)) plansByFolder.set(key, [])
+    plansByFolder.get(key)!.push(plan)
+  }
+  const uncategorized = plansByFolder.get('') ?? []
 
   return (
     <PanelGroup orientation="horizontal" className="h-full overflow-hidden">
@@ -564,20 +836,86 @@ export default function PlansPage({
             >
               Archived
             </button>
-<button onClick={() => refetch()} className="text-slate-600 hover:text-slate-400 transition-colors cursor-pointer" title="Refresh">
+            <button
+              onClick={() => setCreatingFolder(c => !c)}
+              className={`transition-colors cursor-pointer ${creatingFolder ? 'text-blue-400' : 'text-slate-600 hover:text-slate-400'}`}
+              title="New folder"
+            >
+              <FolderPlus className="size-3" />
+            </button>
+            <button onClick={() => refetch()} className="text-slate-600 hover:text-slate-400 transition-colors cursor-pointer" title="Refresh">
               <RotateCcw className="size-3" />
             </button>
           </div>
         </div>
 
+        {/* New folder inline input */}
+        {creatingFolder && (
+          <div className="px-3 py-2 border-b border-white/5 shrink-0 flex gap-1.5">
+            <input
+              autoFocus
+              type="text"
+              value={newFolderName}
+              onChange={e => setNewFolderName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleCreateFolder(); else if (e.key === 'Escape') { setCreatingFolder(false); setNewFolderName('') } }}
+              placeholder="Folder name…"
+              className="flex-1 bg-white/5 border border-white/8 rounded-md px-2.5 py-1.5 text-[13px] text-slate-300 placeholder-slate-600 outline-none focus:border-blue-500/40"
+            />
+            <button
+              onClick={handleCreateFolder}
+              className="px-2 py-1 rounded-md bg-blue-500/20 border border-blue-500/30 text-[12px] text-blue-400 hover:bg-blue-500/30 transition-colors shrink-0"
+            >
+              Create
+            </button>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto">
-          {visiblePlans.length === 0 ? (
+          {visiblePlans.length === 0 && folderList.length === 0 ? (
             <EmptyState
               icon={FileText}
               loading={isLoading}
               title="No plans yet"
               description="Plans appear here when created in Claude Code"
             />
+          ) : folderList.length > 0 || uncategorized.length > 0 ? (
+            <>
+              {folderList.map(folder => (
+                <FolderSection
+                  key={folder.id}
+                  folder={folder}
+                  plans={plansByFolder.get(folder.id) ?? []}
+                  collapsed={collapsed.has(folder.id)}
+                  isDropTarget={dragOverId === folder.id}
+                  onToggle={() => toggleCollapse(folder.id)}
+                  onDrop={planPath => handleDrop(planPath, folder.id)}
+                  onDragOver={() => setDragOverId(folder.id)}
+                  onDragLeave={() => setDragOverId(null)}
+                  selectedPath={selectedPath}
+                  onPlanClick={setSelectedPath}
+                  onDragStart={() => {}}
+                  onPin={pinned => handlePin(folder.id, pinned)}
+                  onRename={name => handleRename(folder.id, name)}
+                  onDelete={() => handleDelete(folder.id)}
+                />
+              ))}
+              {(uncategorized.length > 0 || dragOverId === '__uncategorized__') && (
+                <FolderSection
+                  key="__uncategorized__"
+                  folder={null}
+                  plans={uncategorized}
+                  collapsed={collapsed.has('__uncategorized__')}
+                  isDropTarget={dragOverId === '__uncategorized__'}
+                  onToggle={() => toggleCollapse('__uncategorized__')}
+                  onDrop={planPath => handleDrop(planPath, '')}
+                  onDragOver={() => setDragOverId('__uncategorized__')}
+                  onDragLeave={() => setDragOverId(null)}
+                  selectedPath={selectedPath}
+                  onPlanClick={setSelectedPath}
+                  onDragStart={() => {}}
+                />
+              )}
+            </>
           ) : (
             visiblePlans.map(plan => (
               <PlanRow
@@ -585,6 +923,7 @@ export default function PlansPage({
                 plan={plan}
                 selected={selectedPath === plan.path}
                 onClick={() => setSelectedPath(plan.path)}
+                onDragStart={() => {}}
               />
             ))
           )}
@@ -597,7 +936,7 @@ export default function PlansPage({
 
       <Panel className="overflow-hidden">
         {selected
-          ? <PlanDetail plan={selected} projectList={resolvedProjectList} />
+          ? <PlanDetail plan={selected} projectList={resolvedProjectList} folderList={folderList} />
           : <NoSelection />
         }
       </Panel>

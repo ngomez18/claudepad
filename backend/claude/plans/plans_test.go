@@ -35,6 +35,7 @@ func openTestQueries(t *testing.T) *generated.Queries {
 		archived      INTEGER NOT NULL DEFAULT 0,
 		pinned        INTEGER NOT NULL DEFAULT 0,
 		project_id    TEXT    NOT NULL DEFAULT '',
+		folder_id     TEXT    NOT NULL DEFAULT '',
 		created_at    DATETIME DEFAULT (datetime('now')),
 		updated_at    DATETIME DEFAULT (datetime('now'))
 	)`)

@@ -1,5 +1,5 @@
 -- name: GetPlanMeta :one
-SELECT friendly_name, pinned, project_id, tags, notes, archived
+SELECT friendly_name, pinned, project_id, tags, notes, archived, folder_id
 FROM file_metadata WHERE real_path = ? AND file_type = 'plan';
 
 -- name: UpsertPlanName :exec
@@ -15,14 +15,15 @@ SET friendly_name = NULL, updated_at = datetime('now')
 WHERE real_path = ? AND file_type = 'plan';
 
 -- name: UpsertPlanMeta :exec
-INSERT INTO file_metadata (id, real_path, file_type, pinned, project_id, tags, notes, archived)
-VALUES (?, ?, 'plan', ?, ?, ?, ?, ?)
+INSERT INTO file_metadata (id, real_path, file_type, pinned, project_id, tags, notes, archived, folder_id)
+VALUES (?, ?, 'plan', ?, ?, ?, ?, ?, ?)
 ON CONFLICT(real_path) DO UPDATE SET
     pinned     = excluded.pinned,
     project_id = excluded.project_id,
     tags       = excluded.tags,
     notes      = excluded.notes,
     archived   = excluded.archived,
+    folder_id  = excluded.folder_id,
     updated_at = datetime('now');
 
 -- name: GetNoteMeta :one
@@ -55,3 +56,7 @@ ON CONFLICT(real_path) DO UPDATE SET
 -- name: ClearFolderFromNotes :exec
 UPDATE file_metadata SET folder_id = '', updated_at = datetime('now')
 WHERE folder_id = ? AND file_type = 'note';
+
+-- name: ClearFolderFromPlans :exec
+UPDATE file_metadata SET folder_id = '', updated_at = datetime('now')
+WHERE folder_id = ? AND file_type = 'plan';

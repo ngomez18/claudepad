@@ -150,6 +150,7 @@ export namespace plans {
 	    tags: string[];
 	    notes: string;
 	    archived: boolean;
+	    folderId: string;
 	    preserved: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -171,6 +172,7 @@ export namespace plans {
 	        this.tags = source["tags"];
 	        this.notes = source["notes"];
 	        this.archived = source["archived"];
+	        this.folderId = source["folderId"];
 	        this.preserved = source["preserved"];
 	    }
 	}
@@ -180,6 +182,7 @@ export namespace plans {
 	    tags: string[];
 	    notes: string;
 	    archived: boolean;
+	    folderId: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new PlanMeta(source);
@@ -192,6 +195,7 @@ export namespace plans {
 	        this.tags = source["tags"];
 	        this.notes = source["notes"];
 	        this.archived = source["archived"];
+	        this.folderId = source["folderId"];
 	    }
 	}
 

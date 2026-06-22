@@ -8,6 +8,7 @@ type PlanMeta struct {
 	Tags      []string `json:"tags"`
 	Notes     string   `json:"notes"`
 	Archived  bool     `json:"archived"`
+	FolderID  string   `json:"folderId"` // folders.id or ""
 }
 
 // Plan represents a single markdown plan file from ~/.claude/plans/.
@@ -26,5 +27,6 @@ type Plan struct {
 	Tags      []string `json:"tags"`
 	Notes     string   `json:"notes"`
 	Archived  bool     `json:"archived"`
+	FolderID  string   `json:"folderId"`
 	Preserved bool     `json:"preserved"` // true when plan is in ~/.claudepad/plans/ but not ~/.claude/plans/
 }

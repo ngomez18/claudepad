@@ -181,6 +181,16 @@ func (a *App) CreateNoteFolder(name string) (claude.Folder, error) {
 	return a.claude.CreateNoteFolder(name)
 }
 
+// GetPlanFolders returns all plan folders, pinned first then alphabetical.
+func (a *App) GetPlanFolders() ([]claude.Folder, error) {
+	return a.claude.GetPlanFolders()
+}
+
+// CreatePlanFolder creates a new plan folder with the given name.
+func (a *App) CreatePlanFolder(name string) (claude.Folder, error) {
+	return a.claude.CreatePlanFolder(name)
+}
+
 // RenameFolder updates the display name of a folder.
 func (a *App) RenameFolder(id, name string) error {
 	return a.claude.RenameFolder(id, name)

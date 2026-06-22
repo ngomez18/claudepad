@@ -24,6 +24,8 @@ export {
   ResumeSession,
   GetNoteFolders,
   CreateNoteFolder,
+  GetPlanFolders,
+  CreatePlanFolder,
   RenameFolder,
   SetFolderPinned,
   DeleteFolder,

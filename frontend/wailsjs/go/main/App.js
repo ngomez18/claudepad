@@ -10,6 +10,10 @@ export function CreateNoteFolder(arg1) {
   return window['go']['main']['App']['CreateNoteFolder'](arg1);
 }
 
+export function CreatePlanFolder(arg1) {
+  return window['go']['main']['App']['CreatePlanFolder'](arg1);
+}
+
 export function DeleteFolder(arg1) {
   return window['go']['main']['App']['DeleteFolder'](arg1);
 }
@@ -36,6 +40,10 @@ export function GetNoteFolders() {
 
 export function GetNotes() {
   return window['go']['main']['App']['GetNotes']();
+}
+
+export function GetPlanFolders() {
+  return window['go']['main']['App']['GetPlanFolders']();
 }
 
 export function GetPlans() {

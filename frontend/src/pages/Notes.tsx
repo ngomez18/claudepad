@@ -588,9 +588,19 @@ export default function NotesPage() {
   const [showArchived, setShowArchived] = useState(false)
   const [search, setSearch] = useState('')
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const [seenFolderIds, setSeenFolderIds] = useState<Set<string>>(new Set())
   const [dragOverId, setDragOverId] = useState<string | null>(null) // folder id or '__uncategorized__'
   const [creatingFolder, setCreatingFolder] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
+
+  // Collapse any folder that hasn't been seen before (default closed).
+  useEffect(() => {
+    if (!folderList) return
+    const newIds = folderList.map(f => f.id).filter(id => !seenFolderIds.has(id))
+    if (newIds.length === 0) return
+    setCollapsed(prev => new Set([...prev, ...newIds]))
+    setSeenFolderIds(prev => new Set([...prev, ...newIds]))
+  }, [folderList])
 
   const visibleNotes = (noteList ?? []).filter(n => {
     if (!showArchived && n.archived) return false

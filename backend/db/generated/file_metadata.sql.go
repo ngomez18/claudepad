@@ -20,6 +20,16 @@ func (q *Queries) ClearFolderFromNotes(ctx context.Context, folderID string) err
 	return err
 }
 
+const clearFolderFromPlans = `-- name: ClearFolderFromPlans :exec
+UPDATE file_metadata SET folder_id = '', updated_at = datetime('now')
+WHERE folder_id = ? AND file_type = 'plan'
+`
+
+func (q *Queries) ClearFolderFromPlans(ctx context.Context, folderID string) error {
+	_, err := q.db.ExecContext(ctx, clearFolderFromPlans, folderID)
+	return err
+}
+
 const clearNoteTitle = `-- name: ClearNoteTitle :exec
 UPDATE file_metadata
 SET friendly_name = NULL, updated_at = datetime('now')
@@ -71,7 +81,7 @@ func (q *Queries) GetNoteMeta(ctx context.Context, realPath string) (GetNoteMeta
 }
 
 const getPlanMeta = `-- name: GetPlanMeta :one
-SELECT friendly_name, pinned, project_id, tags, notes, archived
+SELECT friendly_name, pinned, project_id, tags, notes, archived, folder_id
 FROM file_metadata WHERE real_path = ? AND file_type = 'plan'
 `
 
@@ -82,6 +92,7 @@ type GetPlanMetaRow struct {
 	Tags         string
 	Notes        string
 	Archived     int64
+	FolderID     string
 }
 
 func (q *Queries) GetPlanMeta(ctx context.Context, realPath string) (GetPlanMetaRow, error) {
@@ -94,6 +105,7 @@ func (q *Queries) GetPlanMeta(ctx context.Context, realPath string) (GetPlanMeta
 		&i.Tags,
 		&i.Notes,
 		&i.Archived,
+		&i.FolderID,
 	)
 	return i, err
 }
@@ -153,14 +165,15 @@ func (q *Queries) UpsertNoteTitle(ctx context.Context, arg UpsertNoteTitleParams
 }
 
 const upsertPlanMeta = `-- name: UpsertPlanMeta :exec
-INSERT INTO file_metadata (id, real_path, file_type, pinned, project_id, tags, notes, archived)
-VALUES (?, ?, 'plan', ?, ?, ?, ?, ?)
+INSERT INTO file_metadata (id, real_path, file_type, pinned, project_id, tags, notes, archived, folder_id)
+VALUES (?, ?, 'plan', ?, ?, ?, ?, ?, ?)
 ON CONFLICT(real_path) DO UPDATE SET
     pinned     = excluded.pinned,
     project_id = excluded.project_id,
     tags       = excluded.tags,
     notes      = excluded.notes,
     archived   = excluded.archived,
+    folder_id  = excluded.folder_id,
     updated_at = datetime('now')
 `
 
@@ -172,6 +185,7 @@ type UpsertPlanMetaParams struct {
 	Tags      string
 	Notes     string
 	Archived  int64
+	FolderID  string
 }
 
 func (q *Queries) UpsertPlanMeta(ctx context.Context, arg UpsertPlanMetaParams) error {
@@ -183,6 +197,7 @@ func (q *Queries) UpsertPlanMeta(ctx context.Context, arg UpsertPlanMetaParams) 
 		arg.Tags,
 		arg.Notes,
 		arg.Archived,
+		arg.FolderID,
 	)
 	return err
 }

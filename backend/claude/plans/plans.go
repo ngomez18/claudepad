@@ -181,6 +181,7 @@ func enrichPlansFromDB(q *generated.Queries, planList []Plan) {
 		planList[i].ProjectID = row.ProjectID
 		planList[i].Notes = row.Notes
 		planList[i].Archived = row.Archived != 0
+		planList[i].FolderID = row.FolderID
 
 		var tags []string
 		if row.Tags != "" {
@@ -266,5 +267,6 @@ func SetPlanMeta(q *generated.Queries, path string, meta PlanMeta) error {
 		Tags:      string(tagsJSON),
 		Notes:     meta.Notes,
 		Archived:  archivedInt,
+		FolderID:  meta.FolderID,
 	})
 }

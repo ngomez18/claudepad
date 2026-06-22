@@ -330,6 +330,14 @@ func (c *Client) CreateNoteFolder(name string) (Folder, error) {
 	return folders.CreateFolder(c.db.Queries(), "note", name)
 }
 
+func (c *Client) GetPlanFolders() ([]Folder, error) {
+	return folders.ReadFolders(c.db.Queries(), "plan")
+}
+
+func (c *Client) CreatePlanFolder(name string) (Folder, error) {
+	return folders.CreateFolder(c.db.Queries(), "plan", name)
+}
+
 func (c *Client) RenameFolder(id, name string) error {
 	return folders.RenameFolder(c.db.Queries(), id, name)
 }
